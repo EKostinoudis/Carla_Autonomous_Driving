@@ -1,0 +1,464 @@
+import gymnasium as gym
+import random
+import numpy as np
+import carla
+import cv2
+import logging
+import math
+from typing import Tuple
+from omegaconf import DictConfig, OmegaConf
+import torch
+
+from .world_handler import WorldHandler
+from .sensor import *
+from .sensor_interface import SensorInterface
+
+from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from srunner.scenariomanager.scenarioatomics.atomic_criteria import (RunningStopTest,
+                                                                     RunningRedLightTest,
+                                                                     WrongLaneTest,
+                                                                     OutsideRouteLanesTest,
+                                                                     OnSidewalkTest,
+                                                                     OffRoadTest,
+                                                                     )
+
+try:
+    from agents.navigation.basic_agent import BasicAgent
+except ModuleNotFoundError as e:
+    print("Can't import agents module.")
+    print("Try run 'source set_env.sh' in order to set the PYTHONPATH environment variable.")
+    print("Also, set the proper path for the CARLAROOT variable in the set_env.sh file.")
+    print("")
+    raise e
+
+logger = logging.getLogger(__name__)
+
+''' config attributes
+'ip': str
+'port' int
+'tm_port' int
+'map': str
+'seed' int
+'timeout' int
+'num_of_vehicles' int
+'num_of_walkers' int
+
+# optional
+'render_rgb_camera': bool
+'''
+class Environment(gym.Env):
+    def __init__(self, config: DictConfig):
+        if not isinstance(config, DictConfig): config = OmegaConf.create(dict(config))
+        # self.config = config
+        self.sensors_config = config.sensors
+
+        # create world handler
+        self.world_handler = WorldHandler(config)
+
+        # set the seed
+        seed = config.get('seed', 0)
+        self.set_seed(seed)
+
+        # display camera movement (mainly for debug)
+        self.render_rgb_camera_flag = config.get('render_rgb_camera', False)
+
+        self.vehicle = None
+        self.agent_controller = None
+        self.sensors_env = []
+        self.sensors = []
+        self.vehicle_control = carla.VehicleControl()
+
+        # initialize the sensors that are used in the environment
+        self.init_env_sensors()
+
+        # throttle, break, esteer
+        self.action_space = gym.spaces.Box(
+                low=np.array([0., 0., -1.], dtype=np.float32),
+                high=np.array([1., 1., 1.], dtype=np.float32),
+                dtype=np.float32,
+                seed=seed,
+                )
+
+        # define observation space from sensors_config
+        self.observation_space = self.create_observation_space()
+        self.observation_space.seed(seed)
+
+        # TODO: maybe specify the reward_range
+        # self.reward_range = (min reward, max reward)
+
+        # self.destroy_actors_all()
+        logger.debug('Environment created')
+
+    def create_observation_space(self):
+        obs_space = {}
+        for sensor in self.sensors_config:
+            if sensor['type'] == 'sensor.camera.rgb':
+                space = gym.spaces.Box(
+                        low=0,
+                        high=255,
+                        shape=(sensor['height'], sensor['width']),
+                        dtype=np.uint8,
+                        )
+            elif sensor['type'] == 'sensor.other.gnss':
+                space = gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(3,),
+                        dtype=np.float64,
+                        )
+            elif sensor['type'] == 'sensor.other.imu':
+                space = gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(7,),
+                        dtype=np.float64,
+                        )
+            elif sensor['type'] == 'sensor.speedometer':
+                 space = gym.spaces.Dict({
+                    'speed': gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(1,),
+                        dtype=np.float64,
+                        )
+                    })
+            else:
+                logger.warning(f"{sensor['type']} not implemented for the observation space")
+                continue
+            obs_space[sensor['id']] = gym.spaces.Tuple((
+                gym.spaces.Box(low=0, high=float("inf"), shape=(1,), dtype=np.int64),
+                space,
+                ))
+        return gym.spaces.Dict(obs_space)
+
+    def reset(self, seed=None, options=None):
+        if seed: self.set_seed(seed)
+
+        self.destroy_sensors()
+
+        # reset the world and get the new vehicle
+        self.world_handler.reset()
+        self.vehicle = self.world_handler.vehicle
+
+        # set the new map
+        self.map = CarlaDataProvider.get_map()
+
+        self.reset_env_sensors()
+
+        # vehicle's sensors
+        self.sensor_interface = SensorInterface()
+        self.sensors = setup_sensors(self.sensors_config,
+                                     self.vehicle,
+                                     self.sensor_interface)
+
+        self.init_tests()
+
+        # agent controller that provides us with the desired actions
+        self.init_agent_controller()
+
+        # reset controls
+        self.vehicle_control.throttle = 0.
+        self.vehicle_control.steer = 0.
+        self.vehicle_control.brake = 0.
+
+        # TODO: remove this??
+        CarlaDataProvider.get_world().tick()
+
+        new_state, reward, terminated, truncated, info = self.step([0, 0, 0])
+        return new_state, info
+
+    def step(self, action):
+        ''' Performs one step of the simulation.
+        1. Apply the given action.
+        2. Calculate the reward.
+        3. Check if the simulation ended.
+        4. Get the new state.
+        '''
+
+        self.apply_action(action)
+        '''
+        self.auto_pilot_step()
+        self.vehicle_control.steer = -0.3
+        self.vehicle_control.throttle = 0.3
+        self.vehicle_control.brake = 0.
+        self.vehicle.apply_control(self.vehicle_control)
+        '''
+
+        # world (server) tick
+        CarlaDataProvider.get_world().tick()
+
+        # update scenario
+        self.episode_alive, self.task_failed = self.world_handler.step()
+        print('episode_alive: ', self.episode_alive)
+
+        if self.render_rgb_camera_flag: self.render_rgb_camera()
+
+        # update the state of the tests
+        for test in self.tests: _ = test.update()
+
+        # TODO: remove
+        if not self.episode_alive:
+            # this is for debug
+            scenario = self.world_handler.scenario_runner
+            fail, result = scenario.scenario_manager.scenario_final_state()
+            print('End scenario:', fail, result)
+
+        for test in self.tests[:2]:
+            print(test.name, test.test_status)
+            if test.test_status == 'FAILURE':
+                test.test_status = 'RESET'
+
+        print('WrongLaneTest.in_lane:', self.wrong_lane_test._in_lane)
+        print('OutsideRouteLanesTest._outside_lane_active:', self.outside_route_lane_test._outside_lane_active)
+        print('OutsideRouteLanesTest._wrong_lane_active:', self.outside_route_lane_test._wrong_lane_active)
+        print('OnSidewalkTest._onsidewalk_active:', self.on_sidewalk_test._onsidewalk_active)
+        print('OnSidewalkTest._outside_lane_active:', self.on_sidewalk_test._outside_lane_active)
+        print('OffRoadTest._offroad', self.offroad_test._offroad)
+
+        # NOTE: for debug
+        print('collision_detector', self.collision_detector.data)
+        print('lane_invasion', self.lane_invasion.data)
+        if len(self.lane_invasion.data) > 0:
+            print('crossed: ', [str(d.type) for d in self.lane_invasion.data[-1]])
+
+        print('Out of road: ', self.check_out_of_road())
+
+        logger.debug(f'Velocity: {self.get_velocity():6.02f} '
+                     f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
+
+
+        # calculate the reward
+        reward = self.get_reward()
+
+        # get the terminated and truncated values
+        terminated, truncated = self.episode_end()
+
+        new_state = self.get_state()
+
+        # returns (next state, reward, terminated, truncated, info)
+        return new_state, reward, terminated, truncated, {}
+
+    def render(self): pass # currently empty
+
+    def close(self):
+        self.destroy_sensors()
+
+        # keep this last, maked the world asynchronous
+        self.world_handler.close()
+
+    def apply_action(self, action):
+        self.vehicle_control.throttle = action[0]
+        self.vehicle_control.brake = action[1]
+        self.vehicle_control.steer = action[2]
+
+        # apply the action
+        self.vehicle.apply_control(self.vehicle_control)
+
+    def auto_pilot_step(self):
+        '''Set the vehicle's control using the autopilot'''
+        self.vehicle.apply_control(self.agent_controller.run_step())
+
+    def get_reward(self) -> float:
+        # TODO: implemention
+        # vehicle out of lane
+        if len(self.lane_invasion.data) > 0: self.lane_invasion.data.clear(); return -10.
+        if self.check_out_of_road(): return -10.
+
+        return 0.
+
+    def get_state(self):
+        return self.sensor_interface.get_data()
+
+    def episode_end(self) -> Tuple[bool, bool]:
+        '''Check if the episode should end
+
+        :return: (terminated, truncated)
+        '''
+        if not self.episode_alive: return (True, False)
+        if len(self.collision_detector.data) > 0: return (True, False)
+
+        # TODO: check for max steps and maybe more???
+
+        return (False, False)
+
+    def init_agent_controller(self):
+        '''
+        Initializing an agent with a random destination in order to get the
+        desired actions for the vehicle
+        '''
+        self.agent_controller = BasicAgent(self.vehicle)
+        self.agent_controller.follow_speed_limits() # target speed to speed limit
+        route = [(self.map.get_waypoint(a0.location), a1) for a0, a1 in self.world_handler.vehicle_route]
+        self.agent_controller.set_global_plan(route, clean_queue=False)
+
+    def init_tests(self):
+        '''Initializing all the tests and add them to the list.'''
+        # this is used mainly to update the state at each step
+        self.tests = []
+        self.tests.append(RunningRedLightTest(self.vehicle))
+        self.tests.append(RunningStopTest(self.vehicle))
+
+        # check with ._in_lane
+        self.wrong_lane_test = WrongLaneTest(self.vehicle)
+        self.tests.append(self.wrong_lane_test)
+
+        # check with ._outside_lane_active and ._wrong_lane_active
+        route = [(a0.location, a1) for a0, a1 in self.world_handler.vehicle_route]
+        self.outside_route_lane_test = OutsideRouteLanesTest(self.vehicle, route=route)
+        self.tests.append(self.outside_route_lane_test)
+
+        # check with ._onsidewalk_active and ._outside_lane_active
+        self.on_sidewalk_test = OnSidewalkTest(self.vehicle)
+        self.tests.append(self.on_sidewalk_test)
+
+        # check with ._offroad
+        self.offroad_test = OffRoadTest(self.vehicle)
+        self.tests.append(self.offroad_test)
+
+    def get_velocity(self) -> float:
+        '''Returns the velocity of the vehicle in km/h'''
+        v = self.vehicle.get_velocity()
+        return 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
+
+    def check_out_of_road(self) -> bool:
+        # get the 4 corners of the vehicle and then its waypoints
+        # based on OnSidewalkTest class from srunner/scenariomanager/scenarioatomics/atomic_criteria.py
+        transform = CarlaDataProvider.get_transform(self.vehicle)
+        location = transform.location
+        heading_vec = transform.get_forward_vector()
+        heading_vec.z = 0
+        heading_vec = heading_vec / math.sqrt(math.pow(heading_vec.x, 2) + \
+                math.pow(heading_vec.y, 2))
+        perpendicular_vec = carla.Vector3D(-heading_vec.y, heading_vec.x, 0)
+
+        extent = self.vehicle.bounding_box.extent
+        x_boundary_vector = heading_vec * extent.x
+        y_boundary_vector = perpendicular_vec * extent.y
+
+        bbox = [
+            location + carla.Location(x_boundary_vector - y_boundary_vector),
+            location + carla.Location(x_boundary_vector + y_boundary_vector),
+            location + carla.Location(-1 * x_boundary_vector - y_boundary_vector),
+            location + carla.Location(-1 * x_boundary_vector + y_boundary_vector)]
+
+        bbox_wp = [
+            self.map.get_waypoint(bbox[0], lane_type=carla.LaneType.Any),
+            self.map.get_waypoint(bbox[1], lane_type=carla.LaneType.Any),
+            self.map.get_waypoint(bbox[2], lane_type=carla.LaneType.Any),
+            self.map.get_waypoint(bbox[3], lane_type=carla.LaneType.Any)]
+
+
+        # get the current waypoint from the planner
+        # plan_waypoint, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
+
+        if any([wp.is_junction for wp in bbox_wp]):
+            # print('Junction!!!') # TODO: remove
+            return False
+
+        for i, wp in enumerate(bbox_wp):
+            # not inside the driving zone
+            # print(f'side {i}: {wp.lane_type}') # TODO: remove
+            # if wp.lane_type not in (carla.LaneType.Driving, carla.LaneType.Parking):
+            if wp.lane_type is not carla.LaneType.Driving:
+                if wp.lane_type is carla.LaneType.Shoulder:
+                    current_wp = self.map.get_waypoint(location, lane_type=carla.LaneType.Any)
+                    distance_vehicle_wp = location.distance(current_wp.transform.location)
+                    if distance_vehicle_wp >= current_wp.lane_width / 2:
+                        return True
+                else:
+                    return True
+
+            # print('     wp:', wp.lane_id, wp.road_id) # TODO: remove
+            # print('plan wp:', plan_waypoint.lane_id, plan_waypoint.road_id) # TODO: remove
+            # if wp.lane_id != plan_waypoint.lane_id or wp.road_id != plan_waypoint.road_id:
+            #     return True
+
+        return False
+
+    def destroy_sensors(self):
+        '''
+        Destroy all the actors-sensors that this class holds.
+        In order to destroy ALL the actors in the world, use the
+        `destroy_actors_all` method.
+        '''
+        for sensor in self.sensors_env: sensor.destroy()
+        for sensor in self.sensors: sensor.destroy()
+
+        CarlaDataProvider.get_world().tick()
+
+    def destroy_actors_all(self):
+        '''Use get_actors method to get the actors on the world'''
+        actors = CarlaDataProvider.get_world().get_actors()
+        actors = [x for x in actors if not x.type_id.startswith('traffic')]
+        actors = [x for x in actors if not x.type_id.startswith('spectator')]
+
+        batch = [carla.command.DestroyActor(x) for x in actors]
+        # NOTE: debug, need to remove probably due to for loop
+        for x in actors: logger.debug(f'Destroying sensor: {x}')
+
+        CarlaDataProvider.get_client().apply_batch(batch)
+        CarlaDataProvider.get_world().tick()
+
+    def init_env_sensors(self):
+        if self.render_rgb_camera_flag:
+            # initialize Sensor class for the sensors
+            camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
+            camera_bp.set_attribute('image_size_x', '600')
+            camera_bp.set_attribute('image_size_y', '600')
+            camera_bp.set_attribute('fov', '120')
+
+            # camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
+            camera_transform = carla.Transform(carla.Location(x=1.5, z=2.1))
+            self.rgb_camera = Sensor(camera_bp, camera_transform)
+            self.sensors_env.append(self.rgb_camera)
+
+        # collision detector
+        collision_bp = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
+        self.collision_detector = Sensor(collision_bp, camera_transform)
+        self.sensors_env.append(self.collision_detector)
+
+        # TODO: remove this
+        # lane invasion detector
+        lane_invasion_bp = CarlaDataProvider._blueprint_library.find('sensor.other.lane_invasion')
+        self.lane_invasion = Sensor(lane_invasion_bp, camera_transform)
+        self.sensors_env.append(self.lane_invasion)
+
+    def set_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
+    def reset_env_sensors(self):
+        world = CarlaDataProvider.get_world()
+        if self.render_rgb_camera_flag:
+            self.rgb_camera.reset(
+                    self.vehicle,
+                    world,
+                    extract_rgb_data,
+                    )
+        self.collision_detector.reset(
+                self.vehicle,
+                world,
+                lambda event: event.other_actor.type_id, # blueprint
+                )
+        self.lane_invasion.reset(
+                self.vehicle,
+                world,
+                lambda event: event.crossed_lane_markings,
+                )
+
+    def render_rgb_camera(self):
+        # cv2.imshow('rgb camera', self.rgb_camera.data[-1])
+        # cv2.waitKey(1)
+
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.fromarray(self.rgb_camera.data[-1][::3], 'RGB')
+        fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 22)
+        draw = ImageDraw.Draw(img)
+        self.agent_controller.run_step()
+        _, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
+
+        draw.text((10, 10), str(plan_option).split('.')[-1], font=fnt, fill=(0, 0, 0, 0))
+        cv2.imshow('rgb camera', np.array(img))
+        cv2.waitKey(1)
+

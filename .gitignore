@@ -1,0 +1,7 @@
+__pycache__/
+runs/
+
+/*.py
+notes.txt
+set_env.sh
+test_route.ipynb

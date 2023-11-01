@@ -1,0 +1,87 @@
+
+#### Model Related Parameters ####
+#### Training Related Parameters ####
+MAGICAL_SEED: 1314520
+DATA_PARALLEL: True
+BATCH_SIZE: 60
+NUM_WORKER: 10
+NUMBER_EPOCH: 30
+TARGETS: ['steer', 'acceleration']  # the targets that the network should estimate
+ACCELERATION_AS_ACTION: True
+OTHER_INPUTS: ['speed', 'direction'] # extra input to the neural network
+TRAIN_DATASET_NAME: ['Roach_carla0913_fps10/smalltrain1', 'Roach_carla0913_fps10/smalltrain2'] # Folders of the used training datasets. Should be inside DATASET_PATH folder
+VALID_DATASET_NAME: ['Roach_carla0913_fps10/smallval1'] # Folders of the used offline evaluation datasets. Should be inside DATASET_PATH folder
+ENCODER_INPUT_FRAMES_NUM: 1
+ENCODER_STEP_INTERVAL: 1
+ENCODER_OUTPUT_STEP_DELAY: 0
+DECODER_OUTPUT_FRAMES_NUM: 1
+IMG_NORMALIZATION:     # ImageNet normalization
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+IMAGE_SHAPE: [3, 300, 300]  # Input image shape
+DATA_USED: ['rgb_left', 'rgb_central', 'rgb_right']  # Multi-view cameras, it needs to be set in this order
+DATA_COMMAND_ONE_HOT: True   # encode high-level command to one-hot
+DATA_COMMAND_CLASS_NUM: 4    # 4 for single-lane small towns, 6 for multi-lane towns (lane change to right/left)
+# Data normalization: might be changed depending on datasets
+DATA_NORMALIZATION:
+  steer: [-1.0, 1.0]
+  acceleration: [-1.0, 1.0]
+  speed: [-1.0, 11.0]     # m/s
+
+# Loss Parameters #
+LOSS: 'Action_nospeed_L1'  # no speed L1 loss
+LOSS_WEIGHT:
+  actions:
+    steer: 0.50
+    acceleration: 0.50
+
+# Optimizer Parameters #
+LEARNING_RATE: 0.0001
+LEARNING_RATE_MINIMUM: 0.00001
+LEARNING_RATE_DECAY_EPOCHES: [10, 20]
+LEARNING_RATE_POLICY:
+  name: 'normal'
+  level: 0.5
+
+#### Validation Related Parameters ####
+EVAL_SAVE_LAST_Conv_ACTIVATIONS: True
+EVAL_BATCH_SIZE: 30
+EVAL_SAVE_EPOCHES: [1, 5, 10, 15, 20, 25, 30]
+EARLY_STOPPING: False
+EVAL_IMAGE_WRITING_NUMBER: 100
+EVAL_DRAW_OFFLINE_RESULTS_GRAPHS: ['MAE_steer', 'MAE_acceleration', 'MAE']
+
+### Network Parameters ####
+# Encoder part#
+IMAGENET_PRE_TRAINED: True
+MODEL_TYPE: 'CILv2_multiview_attention'
+# Based on the MODEL_TYPE, we specify the structure
+MODEL_CONFIGURATION:
+  encoder_embedding:
+    perception:
+      res:
+        name: 'resnet34'
+        layer_id: 4
+
+  TxEncoder:
+    d_model: 512
+    n_head: 4
+    num_layers: 4
+    norm_first: True
+    learnable_pe: True
+
+  command:
+    fc:
+      neurons: [512]
+      dropouts: [0.0]
+
+  speed:
+    fc:
+      neurons: [512]
+      dropouts: [0.0]
+
+  action_output:
+    fc:
+      neurons: [512, 256]
+      dropouts: [0.0, 0.0]
+
