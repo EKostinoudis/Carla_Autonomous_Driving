@@ -30,8 +30,8 @@ def main(args):
     SAVE_PATH = os.path.join(*conf.SAVE_PATH.split('/'), MODEL_NAME)
 
     data_path = os.path.join(*conf.data_path.split('/'))
-    train_dataset_names = conf.train_dataset_names
-    val_dataset_names = conf.val_dataset_names
+    train_dataset_names = [os.path.join(*name.split('/')) for name in conf.train_dataset_names]
+    val_dataset_names = [os.path.join(*name.split('/')) for name in conf.val_dataset_names]
     batch_size = conf.batch_size
     num_workers = conf.num_workers
 
@@ -43,6 +43,7 @@ def main(args):
     path_to_yaml = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/CILv2.yaml'.split('/'))
     merge_with_yaml(path_to_yaml)
     model = CIL_multiview_actor_critic(g_conf)
+    model.forward = model.forward2 # change forward function
 
     if torch.cuda.is_available() and torch.cuda.device_count() > 1:
         class MyDataParallel(torch.nn.DataParallel):
@@ -213,6 +214,11 @@ def main(args):
                 }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{epoch}.pth'))
         min_loss = min(loss, min_loss)
 
+    torch.save({
+        'model': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_final.pth'))
     writer.close()
 
 if __name__ == "__main__":

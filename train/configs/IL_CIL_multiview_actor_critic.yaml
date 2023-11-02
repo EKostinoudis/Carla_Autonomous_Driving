@@ -4,8 +4,8 @@ EPOCHS: 50
 batch_size: 2
 num_workers: 2
 SAVE_PATH: ./models/CILv2_multiview/_results/checkpoints/
-data_path: ./models/CILv2_multiview/data/smalltrain1
+data_path: ./models/CILv2_multiview/data/
 train_dataset_names:
-- RouteScenario_0000
+- smalltrain1/RouteScenario_0000
 val_dataset_names:
-- RouteScenario_0000
+- smalltrain1/RouteScenario_0000

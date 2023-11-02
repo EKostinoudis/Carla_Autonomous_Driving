@@ -23,7 +23,7 @@ def extract_model_data_tensors(data, target_names, cameras, device):
     return src_images, src_directions, src_speed, target
 
 def forward_actor_critic(model, data):
-    beta_out = model.forward2(*data)
+    beta_out = model.forward(*data)
     dist = TorchBeta(beta_out, None, low=-1, high=1)
     out = dist.sample().squeeze(1)
     return out[:, 0], out[:, 1]
