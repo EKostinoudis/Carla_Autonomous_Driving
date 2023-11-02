@@ -107,12 +107,16 @@ class CIL_multiview_actor_critic(nn.Module):
 
     def forward2(self, s, s_d, s_s):
         S = int(self.g_conf['ENCODER_INPUT_FRAMES_NUM'])
-        B = s_d[0].shape[0]
+        B = s_d.shape[0]
+        # B = s_d[0].shape[0]
 
-        x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
+        x = s
+        # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
         x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
-        d = s_d[-1]  # [B, 4]
-        s = s_s[-1]  # [B, 1]
+        d = s_d
+        s = s_s
+        # d = s_d[-1]  # [B, 4]
+        # s = s_s[-1]  # [B, 1]
 
         # image embedding
         e_p, _ = self.encoder_embedding_perception(x)    # [B*S*cam, dim, h, w]

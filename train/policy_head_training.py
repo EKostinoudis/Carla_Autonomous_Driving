@@ -5,10 +5,15 @@ from omegaconf import OmegaConf
 import argparse
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from models.CILv2_multiview import g_conf, merge_with_yaml, CIL_multiview_actor_critic
 
-from train.utils import extract_model_data, forward_actor_critic
+from train.utils import extract_model_data_tensors, forward_actor_critic
+
+# suppress rllib's warnings
+import logging
+logging.getLogger("ray.rllib").setLevel(logging.ERROR)
 
 
 def main(args):
@@ -22,9 +27,9 @@ def main(args):
     LEARNING_RATE = conf.LEARNING_RATE
     EPOCHS = conf.EPOCHS
     MODEL_NAME = conf.MODEL_NAME
-    SAVE_PATH = os.path.join(conf.SAVE_PATH, MODEL_NAME)
+    SAVE_PATH = os.path.join(*conf.SAVE_PATH.split('/'), MODEL_NAME)
 
-    data_path = conf.data_path
+    data_path = os.path.join(*conf.data_path.split('/'))
     train_dataset_names = conf.train_dataset_names
     val_dataset_names = conf.val_dataset_names
     batch_size = conf.batch_size
@@ -110,7 +115,7 @@ def main(args):
 
     target_names = ['steer', 'acceleration']
 
-    for epoch in range(epoch_start, EPOCHS):
+    for epoch in tqdm(range(epoch_start, EPOCHS), desc='Epochs'):
         #####################################################
         # Training
         #####################################################
@@ -120,13 +125,12 @@ def main(args):
         steer_loss_list = []
         acceleration_loss_list = []
         for data in train_loader:
-            src_images, src_directions, src_speed, target = extract_model_data(
+            src_images, src_directions, src_speed, target = extract_model_data_tensors(
                 data,
                 target_names,
                 g_conf.DATA_USED,
                 device,
             )
-            target = target[-1]
 
             steer_out, acceleration_out = forward_actor_critic(
                 model,
@@ -146,7 +150,6 @@ def main(args):
             loss_list.append(loss.item())
             steer_loss_list.append(steer_loss.item())
             acceleration_loss_list.append(acceleration_loss.item())
-            break
 
         loss = np.mean(loss_list)
         steer_loss = np.mean(steer_loss_list)
@@ -167,13 +170,12 @@ def main(args):
         steer_loss_list = []
         acceleration_loss_list = []
         for data in val_loader:
-            src_images, src_directions, src_speed, target = extract_model_data(
+            src_images, src_directions, src_speed, target = extract_model_data_tensors(
                 data,
                 target_names,
                 g_conf.DATA_USED,
                 device,
             )
-            target = target[-1]
 
             with torch.no_grad():
                 steer_out, acceleration_out = forward_actor_critic(
@@ -190,7 +192,6 @@ def main(args):
             loss_list.append(loss.item())
             steer_loss_list.append(steer_loss.item())
             acceleration_loss_list.append(acceleration_loss.item())
-            break
 
         loss = np.mean(loss_list)
         steer_loss = np.mean(steer_loss_list)
@@ -203,7 +204,7 @@ def main(args):
 
         scheduler.step(loss)
 
-        if epoch == 0 or loss < min_loss:
+        if loss < min_loss:
             torch.save({
                 'epoch': epoch,
                 'model': model.state_dict(),
@@ -225,7 +226,7 @@ if __name__ == "__main__":
                         )
     parser.add_argument('--clean',
                         action="store_true",
-                        help='Do not load a checkpoint if exits.',
+                        help='Do not load a checkpoint if any exits.',
                         )
     parser.add_argument('--cpu',
                         action="store_true",

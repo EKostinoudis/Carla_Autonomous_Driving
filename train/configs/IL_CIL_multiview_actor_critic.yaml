@@ -1,11 +1,11 @@
 MODEL_NAME: CIL_multiview_actor_critic
 LEARNING_RATE: 8.0e-05
 EPOCHS: 50
+batch_size: 2
+num_workers: 2
 SAVE_PATH: ./models/CILv2_multiview/_results/checkpoints/
 data_path: ./models/CILv2_multiview/data/smalltrain1
 train_dataset_names:
 - RouteScenario_0000
 val_dataset_names:
 - RouteScenario_0000
-batch_size: 2
-num_workers: 2

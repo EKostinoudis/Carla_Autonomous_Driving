@@ -10,6 +10,7 @@ tensorboard
 ray[rllib]
 
 omegaconf
+tqdm
 
 matplotlib
 
