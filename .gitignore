@@ -2,6 +2,7 @@ __pycache__/
 runs/
 
 /*.py
+/*.sh
 notes.txt
 set_env.sh
 test_route.ipynb

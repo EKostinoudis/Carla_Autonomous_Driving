@@ -128,6 +128,9 @@ def main(args):
         #####################################################
         model.module.action_output.train()
 
+        # log the learning rate
+        accelerator.log({"Learning rate": scheduler.get_last_lr()}, step=epoch)
+
         loss_list = []
         steer_loss_list = []
         acceleration_loss_list = []
