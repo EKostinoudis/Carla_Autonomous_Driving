@@ -58,7 +58,6 @@ def main(args):
     path_to_yaml = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/CILv2.yaml'.split('/'))
     merge_with_yaml(path_to_yaml)
     model = CIL_multiview_actor_critic(g_conf)
-    # model.forward = model.forward2
 
     # load the checkpoint
     checkpoints = glob.glob(os.path.join(SAVE_PATH, f"{MODEL_NAME}_*.pth"))

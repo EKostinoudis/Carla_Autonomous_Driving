@@ -24,11 +24,10 @@ fi
 if [ -f "$path" ]; then
 	$python_cmd -m accelerate.commands.launch \
 		--multi_gpu \
-		--num_processes 0 \
 		--num_machines 1 \
 		--mixed_precision no \
 		--dynamo_backend no \
-		$path --clean
+		$path "$@"
 else
 	echo $script not found
 fi
