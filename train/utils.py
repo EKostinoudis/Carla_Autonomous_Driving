@@ -1,5 +1,12 @@
 import torch
+import random
+import numpy as np
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
 def extract_model_data(data, target_names, cameras, device):
     '''Extract the data that the model needs and the targets'''

@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from models.CILv2_multiview import g_conf, merge_with_yaml, CIL_multiview_actor_critic, make_data_loader2
 
-from train.utils import extract_model_data_tensors, forward_actor_critic
+from train.utils import extract_model_data_tensors, forward_actor_critic, set_seed
 
 # suppress rllib's warnings
 import logging
@@ -23,6 +23,8 @@ def main(args):
         conf_file = os.path.join(*'./train/configs'.split('/'), args.config)
 
     conf = OmegaConf.load(conf_file)
+
+    set_seed(conf.seed)
 
     LEARNING_RATE = conf.LEARNING_RATE
     EPOCHS = conf.EPOCHS
@@ -118,6 +120,8 @@ def main(args):
         # Training
         #####################################################
         model.action_output.train()
+
+        writer.add_scalar("Learning rate", scheduler.get_last_lr(), epoch)
 
         loss_list = []
         steer_loss_list = []

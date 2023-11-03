@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 
 from models.CILv2_multiview import g_conf, merge_with_yaml, CIL_multiview_actor_critic
 
-from train.utils import extract_model_data_tensors_no_device, forward_actor_critic
+from train.utils import extract_model_data_tensors_no_device, forward_actor_critic, set_seed
 from accelerate import Accelerator
 from accelerate.utils import ProjectConfiguration
 
@@ -36,6 +36,8 @@ def main(args):
         conf_file = os.path.join(*'./train/configs'.split('/'), args.config)
 
     conf = OmegaConf.load(conf_file)
+
+    set_seed(conf.seed)
 
     LEARNING_RATE = conf.LEARNING_RATE
     EPOCHS = conf.EPOCHS
