@@ -60,63 +60,18 @@ class CIL_multiview_actor_critic(nn.Module):
 
         self.train()
 
-    def forward(self, input_dict, state, seq_lens):
-        s, s_d, s_s = input_dict["obs"]
-
-        S = int(self.g_conf['ENCODER_INPUT_FRAMES_NUM'])
-        # B = s_d[0].shape[0]
-        B = s_d.shape[0]
-
-        x = s
-        # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
-        x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
-        # d = s_d[-1]  # [B, 4]
-        # s = s_s[-1]  # [B, 1]
-        d = s_d.view(B, self.g_conf['DATA_COMMAND_CLASS_NUM'])  # [B, 6]
-        s = s_s.view(B, 1)  # [B, 1]
-
-        # image embedding
-        e_p, _ = self.encoder_embedding_perception(x)    # [B*S*cam, dim, h, w]
-        encoded_obs = e_p.view(B, S*len(self.g_conf['DATA_USED']), self.res_out_dim, self.res_out_h*self.res_out_w)  # [B, S*cam, dim, h*w]
-        encoded_obs = encoded_obs.transpose(2, 3).reshape(B, -1, self.res_out_dim)  # [B, S*cam*h*w, 512]
-        e_d = self.command(d).unsqueeze(1)     # [B, 1, 512]
-        e_s = self.speed(s).unsqueeze(1)       # [B, 1, 512]
-
-        encoded_obs = encoded_obs + e_d + e_s
-
-        if self.params['TxEncoder']['learnable_pe']:
-            # positional encoding
-            pe = encoded_obs + self.positional_encoding    # [B, S*cam*h*w, 512]
-        else:
-            pe = self.positional_encoding(encoded_obs)
-
-        # Transformer encoder multi-head self-attention layers
-        in_memory, _ = self.tx_encoder(pe)  # [B, S*cam*h*w, 512]
-
-        in_memory = torch.mean(in_memory, dim=1)  # [B, 512]
-
-        action_output = self.action_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
-
-        # hold the value estimation in order to be used in other method
-        self._value_out = self.value_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
-
-        return action_output, state
-
     def value_function(self):
         return self._value_out.view(-1)
 
-    def forward2(self, s, s_d, s_s):
+    def forward(self, s, s_d, s_s):
         S = int(self.g_conf['ENCODER_INPUT_FRAMES_NUM'])
         B = s_d.shape[0]
-        # B = s_d[0].shape[0]
 
         x = s
         # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
         x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
         d = s_d
         s = s_s
-        # d = s_d[-1]  # [B, 4]
-        # s = s_s[-1]  # [B, 1]
 
         # image embedding
         e_p, _ = self.encoder_embedding_perception(x)    # [B*S*cam, dim, h, w]
@@ -143,9 +98,12 @@ class CIL_multiview_actor_critic(nn.Module):
         return action_output         # (B, 1, 1), (B, 1, len(TARGETS))
 
 
-
 class CIL_multiview_rllib(TorchModelV2, CIL_multiview_actor_critic):
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
-        CIL_multiview_rllib.__init__(self, g_conf)
+        CIL_multiview_actor_critic.__init__(self, g_conf)
 
+    def forward(self, input_dict, state, seq_lens):
+        s, s_d, s_s = input_dict["obs"]
+        action_output = CIL_multiview_actor_critic.forward(self, s, s_d, s_s)
+        return action_output, state

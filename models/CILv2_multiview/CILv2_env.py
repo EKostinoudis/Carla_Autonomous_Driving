@@ -106,14 +106,14 @@ class CILv2_env(gym.Env):
         # self.norm_rgb = [[self.process_image(self.input_data[camera_type][1])[np.newaxis, ...] for camera_type in g_conf.DATA_USED]]
         self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]) for camera_type in g_conf.DATA_USED]]
         # self.norm_speed = [torch.FloatTensor([self.process_speed(self.input_data['SPEED'][1]['speed'])]).unsqueeze(0)]
-        self.norm_speed = [np.float32([self.process_speed(self.input_data['SPEED'][1]['speed'])])[np.newaxis, ...]]
+        self.norm_speed = [np.float32([self.process_speed(self.input_data['SPEED'][1]['speed'])])]
         if g_conf.DATA_COMMAND_ONE_HOT:
             '''
             self.direction = \
                 [torch.FloatTensor(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0]).unsqueeze(0)]
             '''
             self.direction = \
-                [np.float32(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0])[np.newaxis, ...]]
+                [np.float32(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0])]
 
         else:
             '''
@@ -121,7 +121,7 @@ class CILv2_env(gym.Env):
                 [torch.LongTensor([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1]).unsqueeze(0)]
             '''
             self.direction = \
-                [np.float32([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1])[np.newaxis, ...]]
+                [np.float32([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1])]
         # actions_outputs = self._model.forward(self.norm_rgb, self.direction, self.norm_speed)
 
         self.norm_rgb = np.asarray(self.norm_rgb, dtype=np.float32)

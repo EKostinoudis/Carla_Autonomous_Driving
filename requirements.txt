@@ -8,6 +8,7 @@ torch
 torchvision
 tensorboard
 ray[rllib]
+accelerate
 
 omegaconf
 tqdm
