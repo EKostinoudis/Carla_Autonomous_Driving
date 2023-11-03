@@ -15,8 +15,14 @@ fi
 
 path="$folder/$script"
 
+if python --version 2>&1 | grep -q "Python 3"; then
+	python_cmd="python"
+else
+	python_cmd="python3"
+fi
+
 if [ -f "$path" ]; then
-	python -m accelerate.commands.launch \
+	$python_cmd -m accelerate.commands.launch \
 		--multi_gpu \
 		--num_processes 0 \
 		--num_machines 1 \
