@@ -6,3 +6,4 @@ notes.txt
 set_env.sh
 test_route.ipynb
 bird_eye_view_test.ipynb
+config_accelerate.yaml

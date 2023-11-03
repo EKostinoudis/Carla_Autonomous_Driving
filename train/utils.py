@@ -28,7 +28,7 @@ def extract_model_data_tensors_no_device(data, target_names, cameras):
                              dim=1).unsqueeze(1)
     src_directions = torch.stack(data['current'][0]['can_bus']['direction'], 1).float()
     src_speed = (data['current'][0]['can_bus']['speed']).float().view(-1, 1)
-    target = torch.stack([data['current'][0]['can_bus'][x] for x in target_names], 1).float().squeeze()
+    target = torch.stack([data['current'][0]['can_bus'][x] for x in target_names], 1).float()
 
     return src_images, src_directions, src_speed, target
 
