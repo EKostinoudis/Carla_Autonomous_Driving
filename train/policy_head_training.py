@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from models.CILv2_multiview import g_conf, merge_with_yaml, CIL_multiview_actor_critic, make_data_loader2
 
-from train.utils import extract_model_data_tensors, forward_actor_critic, set_seed
+from train.utils import extract_model_data_tensors, forward_actor_critic, set_seed, get_lr
 
 # suppress rllib's warnings
 import logging
@@ -45,7 +45,6 @@ def main(args):
     path_to_yaml = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/CILv2.yaml'.split('/'))
     merge_with_yaml(path_to_yaml)
     model = CIL_multiview_actor_critic(g_conf)
-    model.forward = model.forward2 # change forward function
 
     if torch.cuda.is_available() and torch.cuda.device_count() > 1:
         class MyDataParallel(torch.nn.DataParallel):
@@ -121,7 +120,7 @@ def main(args):
         #####################################################
         model.action_output.train()
 
-        writer.add_scalar("Learning rate", scheduler.get_last_lr(), epoch)
+        writer.add_scalar("Learning rate", get_lr(optimizer), epoch)
 
         loss_list = []
         steer_loss_list = []

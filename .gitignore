@@ -1,5 +1,6 @@
 __pycache__/
 runs/
+remote_runs/
 
 /*.py
 /*.sh
@@ -8,3 +9,4 @@ set_env.sh
 test_route.ipynb
 bird_eye_view_test.ipynb
 config_accelerate.yaml
+dataset_links.txt

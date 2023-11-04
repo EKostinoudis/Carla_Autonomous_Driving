@@ -1,11 +1,17 @@
 import os
+import sys
 
 # Because the launcher runs this program,
 # change the root directory to the corrent
-script_dir = os.path.dirname(__file__)
-root_dir, current_dir = os.path.split(script_dir)
-if current_dir == 'train':
-    os.chdir(root_dir)
+working_path = os.getcwd() 
+root_dir, current_dir = os.path.split(working_path) 
+
+# Note: this is a fix for me for running it in a SLURM environment
+if current_dir == 'train': 
+    os.chdir(root_dir) 
+    sys.path.append(root_dir) 
+else: 
+    sys.path.append(working_path) 
 
 import numpy as np
 import glob
@@ -14,9 +20,19 @@ import argparse
 import torch
 from tqdm.auto import tqdm
 
-from models.CILv2_multiview import g_conf, merge_with_yaml, CIL_multiview_actor_critic
+from models.CILv2_multiview import (
+    g_conf,
+    merge_with_yaml,
+    CIL_multiview_actor_critic,
+    make_data_loader2,
+)
 
-from train.utils import extract_model_data_tensors_no_device, forward_actor_critic, set_seed
+from train.utils import (
+    extract_model_data_tensors_no_device,
+    forward_actor_critic,
+    set_seed,
+    get_lr,
+)
 from accelerate import Accelerator
 from accelerate.utils import ProjectConfiguration
 
@@ -24,9 +40,8 @@ from accelerate.utils import ProjectConfiguration
 import logging
 logging.getLogger("ray.rllib").setLevel(logging.ERROR)
 
-os.environ['MASTER_ADDR'] = 'localhost'
-
 if os.name == 'nt':
+    os.environ['MASTER_ADDR'] = 'localhost'
     torch.distributed.init_process_group(backend='gloo')
 
 def main(args):
@@ -92,9 +107,6 @@ def main(args):
     for param in model.action_output.parameters():
         param.requires_grad = True
 
-
-    from models.CILv2_multiview import make_data_loader2
-
     train_loader, val_loader = make_data_loader2(
         "transfer",
         data_path,
@@ -130,7 +142,7 @@ def main(args):
         model.module.action_output.train()
 
         # log the learning rate
-        accelerator.log({"Learning rate": scheduler.get_last_lr()}, step=epoch)
+        accelerator.log({"Learning rate": get_lr(optimizer)}, step=epoch)
 
         loss_list = []
         steer_loss_list = []

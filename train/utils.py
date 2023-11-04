@@ -3,6 +3,10 @@ import random
 import numpy as np
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
 
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
+
 def set_seed(seed):
     torch.manual_seed(seed)
     random.seed(seed)
