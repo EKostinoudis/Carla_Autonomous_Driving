@@ -19,6 +19,7 @@ from omegaconf import OmegaConf
 import argparse
 import torch
 from tqdm.auto import tqdm
+import datetime
 
 from models.CILv2_multiview import (
     g_conf,
@@ -65,9 +66,11 @@ def main(args):
     batch_size = conf.batch_size
     num_workers = conf.num_workers
 
+    datetime_str = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+
     config = ProjectConfiguration(project_dir=".", logging_dir="runs")
     accelerator = Accelerator(log_with="tensorboard", project_config=config)
-    accelerator.init_trackers("policy_head_traning")
+    accelerator.init_trackers(f"policy_head_traning-{datetime_str}")
     device = accelerator.device
 
     path_to_yaml = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/CILv2.yaml'.split('/'))
@@ -118,7 +121,7 @@ def main(args):
 
     model.to(device)
 
-    criterion = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss() if conf.loss != 'l1' else torch.nn.L1Loss()
     optimizer = torch.optim.AdamW(model.action_output.parameters(), lr=LEARNING_RATE)
     if checkpoint_optimizer: optimizer.load_state_dict(checkpoint_optimizer)
 

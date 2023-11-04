@@ -1,5 +1,6 @@
 MODEL_NAME: CIL_multiview_actor_critic
 LEARNING_RATE: 8.0e-05
+loss: l1 # l1 for l1 loss otherwise is l2
 EPOCHS: 50
 batch_size: 1
 num_workers: 4

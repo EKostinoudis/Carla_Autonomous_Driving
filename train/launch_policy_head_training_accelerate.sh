@@ -22,7 +22,7 @@ else
 fi
 
 # get an unused port
-port=$(python -c "import socket; s = socket.socket(); s.bind(('', 0));print(s.getsockname()[1]);s.close()")
+port=$($python_cmd -c "import socket; s = socket.socket(); s.bind(('', 0));print(s.getsockname()[1]);s.close()")
 
 if [ -f "$path" ]; then
 	$python_cmd -m accelerate.commands.launch \
