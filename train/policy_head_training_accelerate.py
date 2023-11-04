@@ -194,12 +194,12 @@ def main(args):
         loss_list = []
         steer_loss_list = []
         acceleration_loss_list = []
-        bar_train = tqdm(val_loader,
-                         desc='Validation batches',
-                         disable=not accelerator.is_local_main_process,
-                         leave=False,
-                         )
-        for data in val_loader:
+        bar_val = tqdm(val_loader,
+                       desc='Validation batches',
+                       disable=not accelerator.is_local_main_process,
+                       leave=False,
+                       )
+        for data in bar_val:
             src_images, src_directions, src_speed, target = extract_model_data_tensors_no_device(
                 data,
                 target_names,
