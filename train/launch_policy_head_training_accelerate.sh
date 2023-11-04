@@ -21,11 +21,12 @@ else
 	python_cmd="python3"
 fi
 
+# get an unused port
+port=$(python -c "import socket; s = socket.socket(); s.bind(('', 0));print(s.getsockname()[1]);s.close()")
+
 if [ -f "$path" ]; then
-	# use different port because there is a posibility for someone else to
-	# use the default port (DistributedDataParallel default port)
 	$python_cmd -m accelerate.commands.launch \
-		--main_process_port 21359 \
+		--main_process_port $port \
 		--multi_gpu \
 		--num_machines 1 \
 		--mixed_precision no \

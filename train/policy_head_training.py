@@ -206,12 +206,13 @@ def main(args):
         scheduler.step(loss)
 
         if loss < min_loss:
+            save_ext = 'best' if args.save_best else f'{epoch}'
             torch.save({
                 'epoch': epoch,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict(),
-                }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{epoch}.pth'))
+                }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{save_ext}.pth'))
         min_loss = min(loss, min_loss)
 
     torch.save({
@@ -237,6 +238,10 @@ if __name__ == "__main__":
     parser.add_argument('--cpu',
                         action="store_true",
                         help='Set torch device to "cpu"',
+                        )
+    parser.add_argument('--save-best',
+                        action="store_true",
+                        help='Use one file to save all the models',
                         )
     args = parser.parse_args()
 
