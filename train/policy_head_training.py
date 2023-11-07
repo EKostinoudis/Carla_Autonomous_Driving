@@ -212,7 +212,7 @@ def main(args):
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict(),
-                }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{save_ext}.pth'))
+            }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{save_ext:03d}.pth'))
         min_loss = min(loss, min_loss)
 
     torch.save({

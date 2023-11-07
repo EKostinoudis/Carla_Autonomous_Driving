@@ -11,5 +11,6 @@ train_dataset_names:
 - Roach_carla0913_fps10_dense_normalcamera_T1_dense_3cam 
 - Roach_carla0913_fps10_dense_normalcamera_T3_3cam
 - Roach_carla0913_fps10_dense_normalcamera_T4_dense_3cam
+- Roach_carla0913_fps10_dense_normalcamera_T6_3cam
 val_dataset_names: 
 - Roach_LBCRoutes_3cam_valid

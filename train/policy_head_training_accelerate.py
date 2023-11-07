@@ -237,7 +237,7 @@ def main(args):
 
         if accelerator.is_main_process:
             if loss < min_loss:
-                save_ext = 'best' if args.save_best else f'{epoch}'
+                save_ext = 'best' if args.save_best else f'{epoch:03d}'
                 torch.save({
                     'epoch': epoch,
                     'model': model.state_dict(),
