@@ -1,0 +1,17 @@
+MODEL_NAME: CIL_multiview_actor_critic_stack
+LEARNING_RATE: 8.0e-04
+loss: l1 # l1 for l1 loss otherwise is l2
+EPOCHS: 80
+batch_size: 750
+num_workers: 2
+seed: 0
+SAVE_PATH: ./models/CILv2_multiview/_results/checkpoints/
+data_path: ./models/CILv2_multiview/data/
+train_dataset_names: 
+- Roach_carla0913_fps10_dense_normalcamera_T1_dense_3cam 
+- Roach_carla0913_fps10_dense_normalcamera_T3_3cam
+- Roach_carla0913_fps10_dense_normalcamera_T4_dense_3cam
+- Roach_carla0913_fps10_dense_normalcamera_T6_3cam
+val_dataset_names: 
+- Roach_LBCRoutes_3cam_valid
+

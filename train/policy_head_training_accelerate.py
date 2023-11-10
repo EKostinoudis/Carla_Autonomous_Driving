@@ -25,6 +25,7 @@ from models.CILv2_multiview import (
     g_conf,
     merge_with_yaml,
     CIL_multiview_actor_critic,
+    CIL_multiview_actor_critic_stack,
     make_data_loader2,
 )
 
@@ -75,7 +76,12 @@ def main(args):
 
     path_to_yaml = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/CILv2.yaml'.split('/'))
     merge_with_yaml(path_to_yaml)
-    model = CIL_multiview_actor_critic(g_conf)
+    if MODEL_NAME == 'CIL_multiview_actor_critic':
+        model = CIL_multiview_actor_critic(g_conf)
+    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+        model = CIL_multiview_actor_critic_stack(g_conf)
+    else:
+        raise Exception(f"{MODEL_NAME} doesn't exist")
 
     # load the checkpoint
     checkpoints = glob.glob(os.path.join(SAVE_PATH, f"{MODEL_NAME}_*.pth"))
@@ -91,7 +97,10 @@ def main(args):
         checkpoint_file = os.path.join(*'./models/CILv2_multiview/_results/Ours/Town12346_5/checkpoints/CILv2_multiview_attention_40.pth'.split('/'))
         checkpoint = torch.load(checkpoint_file, map_location=device)['model']
         checkpoint = {k[7:] if k.startswith('_model.') else k:v for k, v in checkpoint.items()}
-        checkpoint_model = {k:v for k, v in checkpoint.items() if not k.startswith('action_output.layers.2.0')}
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            checkpoint_model = {k:v for k, v in checkpoint.items() if not k.startswith('action_output.layers.2.0')}
+        else:
+            checkpoint_model = checkpoint
         checkpoint_optimizer = None
         checkpoint_scheduler = None
         epoch_start = 0
@@ -100,15 +109,22 @@ def main(args):
     model.load_state_dict(checkpoint_model, strict=False)
 
     model.eval()
-    model.action_output.train()
+    if MODEL_NAME == 'CIL_multiview_actor_critic':
+        model.action_output.train()
+    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+        model.action_output2.train()
 
     # freeze weights
     for param in model.parameters():
         param.requires_grad = False
 
     # unfreeze the last layer
-    for param in model.action_output.parameters():
-        param.requires_grad = True
+    if MODEL_NAME == 'CIL_multiview_actor_critic':
+        for param in model.action_output.parameters():
+            param.requires_grad = True
+    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+        for param in model.action_output2.parameters():
+            param.requires_grad = True
 
     train_loader, val_loader = make_data_loader2(
         "transfer",
@@ -121,8 +137,13 @@ def main(args):
 
     model.to(device)
 
+    if MODEL_NAME == 'CIL_multiview_actor_critic':
+        params = model.action_output.parameters()
+    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+        params = model.action_output2.parameters()
+
     criterion = torch.nn.MSELoss() if conf.loss != 'l1' else torch.nn.L1Loss()
-    optimizer = torch.optim.AdamW(model.action_output.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.AdamW(params, lr=LEARNING_RATE)
     if checkpoint_optimizer: optimizer.load_state_dict(checkpoint_optimizer)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
@@ -142,7 +163,10 @@ def main(args):
         #####################################################
         # Training
         #####################################################
-        model.module.action_output.train()
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            model.action_output.train()
+        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+            model.action_output2.train()
 
         # log the learning rate
         accelerator.log({"Learning rate": get_lr(optimizer)}, step=epoch)
@@ -192,7 +216,10 @@ def main(args):
         #####################################################
         # Validation
         #####################################################
-        model.module.action_output.eval()
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            model.module.action_output.eval()
+        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+            model.module.action_output2.eval()
 
         loss_list = []
         steer_loss_list = []
