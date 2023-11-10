@@ -240,7 +240,7 @@ def main(args):
                 save_ext = 'best' if args.save_best else f'{epoch:03d}'
                 torch.save({
                     'epoch': epoch,
-                    'model': model.state_dict(),
+                    'model': accelerator.unwrap_model(model).state_dict(),
                     'optimizer': optimizer.state_dict(),
                     'scheduler': scheduler.state_dict(),
                     }, os.path.join(SAVE_PATH, f'{MODEL_NAME}_{save_ext}.pth'))
