@@ -133,7 +133,7 @@ class CIL_multiview_actor_critic_stack(nn.Module):
                                  'dropouts': self.params['action_output']['fc']['dropouts'] + [0.0],
                                  'end_layer': True})
 
-        self.action_output2 = FC(params={'neurons': [join_dim] +
+        self.action_output2 = FC(params={'neurons': 
                                             [self.params['action_output']['fc']['neurons'][-1] + 2] +
                                             [128, 4],
                                  'dropouts': 2*[0.0],
