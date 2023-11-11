@@ -140,7 +140,9 @@ class CIL_multiview_actor_critic_stack(nn.Module):
                                  'end_layer': True})
 
         # critic output (value)
-        self.value_output = FC(params={'neurons': self.params['action_output']['fc']['neurons'] + [1],
+        self.value_output = FC(params={'neurons': [join_dim] +
+                                            self.params['action_output']['fc']['neurons'] +
+                                            [1],
                                  'dropouts': self.params['action_output']['fc']['dropouts'] + [0.0],
                                  'end_layer': True})
 
