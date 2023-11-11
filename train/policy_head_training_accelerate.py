@@ -164,9 +164,9 @@ def main(args):
         # Training
         #####################################################
         if MODEL_NAME == 'CIL_multiview_actor_critic':
-            model.action_output.train()
+            model.module.action_output.train()
         elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-            model.action_output2.train()
+            model.module.action_output2.train()
 
         # log the learning rate
         accelerator.log({"Learning rate": get_lr(optimizer)}, step=epoch)
