@@ -1,11 +1,9 @@
 import os
-import torch
 import json
 import numpy as np
-import torchvision.transforms.functional as TF
-from PIL import Image
 from omegaconf import DictConfig
 import gymnasium as gym
+import logging
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -16,6 +14,7 @@ from .waypointer import Waypointer
 from environment import Environment
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
+logger = logging.getLogger(__name__)
 
 def checkpoint_parse_configuration_file(filename):
     with open(filename, 'r') as f:
@@ -99,30 +98,20 @@ class CILv2_env(gym.Env):
         self.input_data = state
         state = self.run_step()
 
+        reward += self.additional_reward()
+
         return state, reward, terminated, truncated, info
 
     def run_step(self):
-        # self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]).unsqueeze(0) for camera_type in g_conf.DATA_USED]]
-        # self.norm_rgb = [[self.process_image(self.input_data[camera_type][1])[np.newaxis, ...] for camera_type in g_conf.DATA_USED]]
         self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]) for camera_type in g_conf.DATA_USED]]
-        # self.norm_speed = [torch.FloatTensor([self.process_speed(self.input_data['SPEED'][1]['speed'])]).unsqueeze(0)]
         self.norm_speed = [np.float32([self.process_speed(self.input_data['SPEED'][1]['speed'])])]
         if g_conf.DATA_COMMAND_ONE_HOT:
-            '''
-            self.direction = \
-                [torch.FloatTensor(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0]).unsqueeze(0)]
-            '''
             self.direction = \
                 [np.float32(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0])]
 
         else:
-            '''
-            self.direction = \
-                [torch.LongTensor([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1]).unsqueeze(0)]
-            '''
             self.direction = \
                 [np.float32([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1])]
-        # actions_outputs = self._model.forward(self.norm_rgb, self.direction, self.norm_speed)
 
         self.norm_rgb = np.asarray(self.norm_rgb, dtype=np.float32)
         self.direction = np.asarray(self.direction, dtype=np.float32)
@@ -138,21 +127,32 @@ class CILv2_env(gym.Env):
         self.world = None
         self.env.close()
 
-    def process_image(self, image):
-        image2 = image[:,:,:3][:, :, ::-1] / 255.
-        '''
-        image = Image.fromarray(image[:,:,:3][:, :, ::-1])
-        image = image.resize((g_conf.IMAGE_SHAPE[2], g_conf.IMAGE_SHAPE[1])).convert('RGB')
-        image = TF.to_tensor(image)
-        # Normalization is really necessary if you want to use any pretrained weights.
-        image = TF.normalize(image, mean=g_conf.IMG_NORMALIZATION['mean'], std=g_conf.IMG_NORMALIZATION['std'], inplace=False)
-        '''
+    def additional_reward(self):
+        # if the vehicle is out of road don't add any reward
+        if self.env.out_of_road:
+            return 0.
 
+        # if [RoadOption.STRAIGHT, RoadOption.LANEFOLLOW]:
+        if self.direction[0][2] > 0.5 or self.direction[0][3] > 0.5:
+            # waypoint of the current plan
+            plan_wp = self.env.map.get_waypoint(self.waypointer._global_route[0][0].location)
+
+            # for the front corners
+            # for i, wp in enumerate(self.env.bbox_wp[:2]):
+            for wp in self.env.bbox_wp[:2]:
+                # check out of lane
+                if wp.lane_id != plan_wp.lane_id or wp.road_id != plan_wp.road_id:
+                    return -10.
+
+        return 0.
+
+    def process_image(self, image):
+        image = image[:,:,:3][:, :, ::-1] / 255.
         # to numpy array and normilize
-        image2 = np.asarray(image2, dtype=np.float32)
-        image2 = (image2 - g_conf.IMG_NORMALIZATION['mean']) / g_conf.IMG_NORMALIZATION['std']
-        image2 = image2.transpose((2, 0 , 1))
-        return image2
+        image = np.asarray(image, dtype=np.float32)
+        image = (image - g_conf.IMG_NORMALIZATION['mean']) / g_conf.IMG_NORMALIZATION['std']
+        image = image.transpose((2, 0 , 1))
+        return image
 
     def process_speed(self, speed):
         norm_speed = abs(speed - g_conf.DATA_NORMALIZATION['speed'][0]) / (
@@ -176,12 +176,12 @@ class CILv2_env(gym.Env):
         return np.clip(steer, -1, 1), np.clip(throttle, 0, 1), np.clip(brake, 0, 1)
 
     def process_command(self, gps, imu):
-        if g_conf.DATA_COMMAND_CLASS_NUM == 4:
-            _, _, cmd = self.waypointer.tick_nc(gps, imu)
-            return encode_directions_4(cmd.value), cmd.value
-        elif g_conf.DATA_COMMAND_CLASS_NUM == 6:
+        if g_conf.DATA_COMMAND_CLASS_NUM == 6:
             _, _, cmd = self.waypointer.tick_lb(gps, imu)
             return encode_directions_6(cmd.value), cmd.value
+        else:
+            logger.fatal('g_conf.DATA_COMMAND_CLASS_NUM != 6 not supported')
+            exit(1)
 
     def setup_model(self, path_to_conf_file):
         exp_dir = os.path.split(path_to_conf_file)[0]

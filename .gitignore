@@ -1,6 +1,7 @@
 __pycache__/
 runs/
 remote_runs/
+.idea/
 
 /*.py
 /*.sh

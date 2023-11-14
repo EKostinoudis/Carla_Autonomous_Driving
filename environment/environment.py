@@ -196,6 +196,9 @@ class Environment(gym.Env):
         # update the state of the tests
         for test in self.tests: _ = test.update()
 
+        # check if the vehicle is out of road and hold the value
+        self.out_of_road = self.check_out_of_road()
+
         # TODO: remove
         if not self.episode_alive:
             # this is for debug
@@ -221,7 +224,7 @@ class Environment(gym.Env):
         if len(self.lane_invasion.data) > 0:
             print('crossed: ', [str(d.type) for d in self.lane_invasion.data[-1]])
 
-        print('Out of road: ', self.check_out_of_road())
+        print('Out of road: ', self.out_of_road)
 
         logger.debug(f'Velocity: {self.get_velocity():6.02f} '
                      f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
@@ -262,7 +265,7 @@ class Environment(gym.Env):
         # TODO: implemention
         # vehicle out of lane
         if len(self.lane_invasion.data) > 0: self.lane_invasion.data.clear(); return -10.
-        if self.check_out_of_road(): return -10.
+        if self.out_of_road: return -10.
 
         return 0.
 
@@ -341,7 +344,7 @@ class Environment(gym.Env):
             location + carla.Location(-1 * x_boundary_vector - y_boundary_vector),
             location + carla.Location(-1 * x_boundary_vector + y_boundary_vector)]
 
-        bbox_wp = [
+        self.bbox_wp = [
             self.map.get_waypoint(bbox[0], lane_type=carla.LaneType.Any),
             self.map.get_waypoint(bbox[1], lane_type=carla.LaneType.Any),
             self.map.get_waypoint(bbox[2], lane_type=carla.LaneType.Any),
@@ -351,11 +354,11 @@ class Environment(gym.Env):
         # get the current waypoint from the planner
         # plan_waypoint, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
 
-        if any([wp.is_junction for wp in bbox_wp]):
+        if any([wp.is_junction for wp in self.bbox_wp]):
             # print('Junction!!!') # TODO: remove
             return False
 
-        for i, wp in enumerate(bbox_wp):
+        for i, wp in enumerate(self.bbox_wp):
             # not inside the driving zone
             # print(f'side {i}: {wp.lane_type}') # TODO: remove
             # if wp.lane_type not in (carla.LaneType.Driving, carla.LaneType.Parking):
@@ -452,13 +455,14 @@ class Environment(gym.Env):
         # cv2.waitKey(1)
 
         from PIL import Image, ImageDraw, ImageFont
+        # from PIL import ImageDraw, ImageFont
         img = Image.fromarray(self.rgb_camera.data[-1][::3], 'RGB')
-        fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 22)
-        draw = ImageDraw.Draw(img)
-        self.agent_controller.run_step()
-        _, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
+        # fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 22)
+        # draw = ImageDraw.Draw(img)
+        # self.agent_controller.run_step()
+        # _, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
 
-        draw.text((10, 10), str(plan_option).split('.')[-1], font=fnt, fill=(0, 0, 0, 0))
+        # draw.text((10, 10), str(plan_option).split('.')[-1], font=fnt, fill=(0, 0, 0, 0))
         cv2.imshow('rgb camera', np.array(img))
         cv2.waitKey(1)
 
