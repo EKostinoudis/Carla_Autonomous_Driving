@@ -4,6 +4,7 @@ import numpy as np
 from omegaconf import DictConfig
 import gymnasium as gym
 import logging
+import carla
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -13,6 +14,8 @@ from dataloaders.transforms import encode_directions_4, encode_directions_6
 from .waypointer import Waypointer
 from environment import Environment
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+
+from agents.navigation.local_planner import RoadOption
 
 logger = logging.getLogger(__name__)
 
@@ -132,16 +135,27 @@ class CILv2_env(gym.Env):
         if self.env.out_of_road:
             return 0.
 
-        # if [RoadOption.STRAIGHT, RoadOption.LANEFOLLOW]:
-        if self.direction[0][2] > 0.5 or self.direction[0][3] > 0.5:
+        command = self.waypointer._global_route[0][1]
+        if command not in [RoadOption.LEFT, RoadOption.RIGHT]:
+            if any([wp.is_junction for wp in self.env.bbox_wp]):
+                return 0.
+
             # waypoint of the current plan
             plan_wp = self.env.map.get_waypoint(self.waypointer._global_route[0][0].location)
+            lane_change_left = self.direction[0][4] > 0
+            lane_change_right = self.direction[0][5] > 0
 
-            # for the front corners
+            # for the front corners of the vehicle
             # for i, wp in enumerate(self.env.bbox_wp[:2]):
             for wp in self.env.bbox_wp[:2]:
                 # check out of lane
-                if wp.lane_id != plan_wp.lane_id or wp.road_id != plan_wp.road_id:
+                if wp.lane_id != plan_wp.lane_id:
+                    if wp.lane_type is not carla.LaneType.Driving:
+                        continue
+                    if lane_change_left and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
+                        continue
+                    if lane_change_right and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
+                        continue
                     return -10.
 
         return 0.

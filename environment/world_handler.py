@@ -125,7 +125,8 @@ class WorldHandler():
         if self.scenario_runner:
             if config.get('pick_random', True):
                 def configs_generator():
-                    yield random.choice(self.configs)
+                    while True:
+                        yield random.choice(self.configs)
                 self.configs_iter = configs_generator()
             else:
                 self.configs_iter = cycle(self.configs)
