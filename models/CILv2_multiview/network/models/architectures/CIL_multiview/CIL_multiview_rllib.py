@@ -95,6 +95,9 @@ class CIL_multiview_actor_critic(nn.Module):
 
         action_output = self.action_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
 
+        # hold the value estimation in order to be used in other method
+        self._value_out = self.value_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
+
         return action_output         # (B, 1, 1), (B, 1, len(TARGETS))
 
 
@@ -193,6 +196,9 @@ class CIL_multiview_actor_critic_stack(nn.Module):
         old_out = self.action_output.layers[-1](x)  # (B, 2)
 
         action_output = self.action_output2(torch.cat((x, old_out), dim=1)).unsqueeze(1)  # (B, 514) -> (B, 1, len(TARGETS))
+
+        # hold the value estimation in order to be used in other method
+        self._value_out = self.value_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
 
         return action_output         # (B, 1, 1), (B, 1, len(TARGETS))
 
