@@ -63,7 +63,6 @@ class Environment(gym.Env):
         self.render_rgb_camera_flag = config.get('render_rgb_camera', False)
 
         self.vehicle = None
-        self.agent_controller = None
         self.sensors_env = []
         self.sensors = []
         self.vehicle_control = carla.VehicleControl()
@@ -153,15 +152,11 @@ class Environment(gym.Env):
 
         self.init_tests()
 
-        # agent controller that provides us with the desired actions
-        self.init_agent_controller()
-
         # reset controls
         self.vehicle_control.throttle = 0.
         self.vehicle_control.steer = 0.
         self.vehicle_control.brake = 0.
 
-        # TODO: remove this??
         CarlaDataProvider.get_world().tick()
 
         new_state, reward, terminated, truncated, info = self.step([0, 0, 0])
@@ -176,13 +171,6 @@ class Environment(gym.Env):
         '''
 
         self.apply_action(action)
-        '''
-        self.auto_pilot_step()
-        self.vehicle_control.steer = -0.3
-        self.vehicle_control.throttle = 0.3
-        self.vehicle_control.brake = 0.
-        self.vehicle.apply_control(self.vehicle_control)
-        '''
 
         # world (server) tick
         CarlaDataProvider.get_world().tick()
@@ -199,31 +187,8 @@ class Environment(gym.Env):
         # check if the vehicle is out of road and hold the value
         self.out_of_road = self.check_out_of_road()
 
-        # TODO: remove
-        if not self.episode_alive:
-            # this is for debug
-            scenario = self.world_handler.scenario_runner
-            fail, result = scenario.scenario_manager.scenario_final_state()
-            print('End scenario:', fail, result)
-
-        for test in self.tests[:2]:
-            print(test.name, test.test_status)
-            if test.test_status == 'FAILURE':
-                test.test_status = 'RESET'
-
-        print('WrongLaneTest.in_lane:', self.wrong_lane_test._in_lane)
-        print('OutsideRouteLanesTest._outside_lane_active:', self.outside_route_lane_test._outside_lane_active)
-        print('OutsideRouteLanesTest._wrong_lane_active:', self.outside_route_lane_test._wrong_lane_active)
-        print('OnSidewalkTest._onsidewalk_active:', self.on_sidewalk_test._onsidewalk_active)
-        print('OnSidewalkTest._outside_lane_active:', self.on_sidewalk_test._outside_lane_active)
-        print('OffRoadTest._offroad', self.offroad_test._offroad)
-
         # NOTE: for debug
         print('collision_detector', self.collision_detector.data)
-        print('lane_invasion', self.lane_invasion.data)
-        if len(self.lane_invasion.data) > 0:
-            print('crossed: ', [str(d.type) for d in self.lane_invasion.data[-1]])
-
         print('Out of road: ', self.out_of_road)
 
         logger.debug(f'Velocity: {self.get_velocity():6.02f} '
@@ -257,14 +222,26 @@ class Environment(gym.Env):
         # apply the action
         self.vehicle.apply_control(self.vehicle_control)
 
-    def auto_pilot_step(self):
-        '''Set the vehicle's control using the autopilot'''
-        self.vehicle.apply_control(self.agent_controller.run_step())
-
     def get_reward(self) -> float:
         # TODO: implemention
-        # vehicle out of lane
-        if len(self.lane_invasion.data) > 0: self.lane_invasion.data.clear(); return -10.
+
+        # end of scenario reward
+        if not self.episode_alive:
+            scenario = self.world_handler.scenario_runner
+            fail, result = scenario.scenario_manager.scenario_final_state()
+            # this is for debug
+            print('End scenario:', fail, result)
+
+        # stop and red light tests
+        for test in self.tests[:2]:
+            print(test.name, test.test_status)
+            if test.test_status == 'FAILURE':
+                test.test_status = 'RESET'
+                # TODO: add reward here
+
+        # TODO: add reward based on steering
+        # self.vehicle_control.steer
+
         if self.out_of_road: return -10.
 
         return 0.
@@ -284,16 +261,6 @@ class Environment(gym.Env):
 
         return (False, False)
 
-    def init_agent_controller(self):
-        '''
-        Initializing an agent with a random destination in order to get the
-        desired actions for the vehicle
-        '''
-        self.agent_controller = BasicAgent(self.vehicle)
-        self.agent_controller.follow_speed_limits() # target speed to speed limit
-        route = [(self.map.get_waypoint(a0.location), a1) for a0, a1 in self.world_handler.vehicle_route]
-        self.agent_controller.set_global_plan(route, clean_queue=False)
-
     def init_tests(self):
         '''Initializing all the tests and add them to the list.'''
         # this is used mainly to update the state at each step
@@ -301,6 +268,7 @@ class Environment(gym.Env):
         self.tests.append(RunningRedLightTest(self.vehicle))
         self.tests.append(RunningStopTest(self.vehicle))
 
+        '''
         # check with ._in_lane
         self.wrong_lane_test = WrongLaneTest(self.vehicle)
         self.tests.append(self.wrong_lane_test)
@@ -317,6 +285,7 @@ class Environment(gym.Env):
         # check with ._offroad
         self.offroad_test = OffRoadTest(self.vehicle)
         self.tests.append(self.offroad_test)
+        '''
 
     def get_velocity(self) -> float:
         '''Returns the velocity of the vehicle in km/h'''
@@ -350,18 +319,10 @@ class Environment(gym.Env):
             self.map.get_waypoint(bbox[2], lane_type=carla.LaneType.Any),
             self.map.get_waypoint(bbox[3], lane_type=carla.LaneType.Any)]
 
-
-        # get the current waypoint from the planner
-        # plan_waypoint, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
-
         if any([wp.is_junction for wp in self.bbox_wp]):
-            # print('Junction!!!') # TODO: remove
             return False
 
         for i, wp in enumerate(self.bbox_wp):
-            # not inside the driving zone
-            # print(f'side {i}: {wp.lane_type}') # TODO: remove
-            # if wp.lane_type not in (carla.LaneType.Driving, carla.LaneType.Parking):
             if wp.lane_type is not carla.LaneType.Driving:
                 if wp.lane_type is carla.LaneType.Shoulder:
                     current_wp = self.map.get_waypoint(location, lane_type=carla.LaneType.Any)
@@ -370,11 +331,6 @@ class Environment(gym.Env):
                         return True
                 else:
                     return True
-
-            # print('     wp:', wp.lane_id, wp.road_id) # TODO: remove
-            # print('plan wp:', plan_waypoint.lane_id, plan_waypoint.road_id) # TODO: remove
-            # if wp.lane_id != plan_waypoint.lane_id or wp.road_id != plan_waypoint.road_id:
-            #     return True
 
         return False
 
@@ -420,12 +376,6 @@ class Environment(gym.Env):
         self.collision_detector = Sensor(collision_bp, camera_transform)
         self.sensors_env.append(self.collision_detector)
 
-        # TODO: remove this
-        # lane invasion detector
-        lane_invasion_bp = CarlaDataProvider._blueprint_library.find('sensor.other.lane_invasion')
-        self.lane_invasion = Sensor(lane_invasion_bp, camera_transform)
-        self.sensors_env.append(self.lane_invasion)
-
     def set_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
@@ -444,25 +394,8 @@ class Environment(gym.Env):
                 world,
                 lambda event: event.other_actor.type_id, # blueprint
                 )
-        self.lane_invasion.reset(
-                self.vehicle,
-                world,
-                lambda event: event.crossed_lane_markings,
-                )
 
     def render_rgb_camera(self):
-        # cv2.imshow('rgb camera', self.rgb_camera.data[-1])
-        # cv2.waitKey(1)
-
-        from PIL import Image, ImageDraw, ImageFont
-        # from PIL import ImageDraw, ImageFont
-        img = Image.fromarray(self.rgb_camera.data[-1][::3], 'RGB')
-        # fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 22)
-        # draw = ImageDraw.Draw(img)
-        # self.agent_controller.run_step()
-        # _, plan_option = self.agent_controller.get_local_planner()._waypoints_queue[0]
-
-        # draw.text((10, 10), str(plan_option).split('.')[-1], font=fnt, fill=(0, 0, 0, 0))
-        cv2.imshow('rgb camera', np.array(img))
+        cv2.imshow('rgb camera', self.rgb_camera.data[-1])
         cv2.waitKey(1)
 
