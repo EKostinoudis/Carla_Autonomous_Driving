@@ -14,38 +14,18 @@ from .sensor import *
 from .sensor_interface import SensorInterface
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from srunner.scenariomanager.scenarioatomics.atomic_criteria import (RunningStopTest,
-                                                                     RunningRedLightTest,
-                                                                     WrongLaneTest,
-                                                                     OutsideRouteLanesTest,
-                                                                     OnSidewalkTest,
-                                                                     OffRoadTest,
-                                                                     )
-
-try:
-    from agents.navigation.basic_agent import BasicAgent
-except ModuleNotFoundError as e:
-    print("Can't import agents module.")
-    print("Try run 'source set_env.sh' in order to set the PYTHONPATH environment variable.")
-    print("Also, set the proper path for the CARLAROOT variable in the set_env.sh file.")
-    print("")
-    raise e
+from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
+    RunningStopTest,
+    RunningRedLightTest,
+    # WrongLaneTest,
+    # OutsideRouteLanesTest,
+    # OnSidewalkTest,
+    # OffRoadTest,
+)
 
 logger = logging.getLogger(__name__)
 
-''' config attributes
-'ip': str
-'port' int
-'tm_port' int
-'map': str
-'seed' int
-'timeout' int
-'num_of_vehicles' int
-'num_of_walkers' int
 
-# optional
-'render_rgb_camera': bool
-'''
 class Environment(gym.Env):
     def __init__(self, config: DictConfig):
         if not isinstance(config, DictConfig): config = OmegaConf.create(dict(config))
@@ -61,6 +41,21 @@ class Environment(gym.Env):
 
         # display camera movement (mainly for debug)
         self.render_rgb_camera_flag = config.get('render_rgb_camera', False)
+        
+        # termination after stop sign or red light run
+        self.termination_on_run = config.get('termination_on_run', True)
+        self.fixed_delta_seconds = config.get('fixed_delta_seconds', 0.1)
+
+        # terminate after this seconds pass while the vehicle is stopped
+        self.stopped_termination_seconds = config.get('stopped_termination_seconds', 90)
+
+        # get the reward constants-multipliers
+        self.reward_failure = config.get('reward_failure', -10.)
+        self.reward_success = config.get('reward_success', 10.)
+        self.reward_wrong_lane = config.get('reward_wrong_lane', -1.)
+        self.reward_steer = config.get('reward_steer', -0.1)
+        self.reward_speed = config.get('reward_speed', 0.1)
+        self.reward_max_speed = config.get('reward_max_speed', 30.)
 
         self.vehicle = None
         self.sensors_env = []
@@ -88,49 +83,10 @@ class Environment(gym.Env):
         # self.destroy_actors_all()
         logger.debug('Environment created')
 
-    def create_observation_space(self):
-        obs_space = {}
-        for sensor in self.sensors_config:
-            if sensor['type'] == 'sensor.camera.rgb':
-                space = gym.spaces.Box(
-                        low=0,
-                        high=255,
-                        shape=(sensor['height'], sensor['width']),
-                        dtype=np.uint8,
-                        )
-            elif sensor['type'] == 'sensor.other.gnss':
-                space = gym.spaces.Box(
-                        low=float("-inf"),
-                        high=float("inf"),
-                        shape=(3,),
-                        dtype=np.float64,
-                        )
-            elif sensor['type'] == 'sensor.other.imu':
-                space = gym.spaces.Box(
-                        low=float("-inf"),
-                        high=float("inf"),
-                        shape=(7,),
-                        dtype=np.float64,
-                        )
-            elif sensor['type'] == 'sensor.speedometer':
-                 space = gym.spaces.Dict({
-                    'speed': gym.spaces.Box(
-                        low=float("-inf"),
-                        high=float("inf"),
-                        shape=(1,),
-                        dtype=np.float64,
-                        )
-                    })
-            else:
-                logger.warning(f"{sensor['type']} not implemented for the observation space")
-                continue
-            obs_space[sensor['id']] = gym.spaces.Tuple((
-                gym.spaces.Box(low=0, high=float("inf"), shape=(1,), dtype=np.int64),
-                space,
-                ))
-        return gym.spaces.Dict(obs_space)
-
     def reset(self, seed=None, options=None):
+        self.prev_steer = 0. # previoius steer value
+        self.stopped_count = 0 # ticks the vehicle is stopped
+
         if seed: self.set_seed(seed)
 
         self.destroy_sensors()
@@ -187,13 +143,18 @@ class Environment(gym.Env):
         # check if the vehicle is out of road and hold the value
         self.out_of_road = self.check_out_of_road()
 
-        # NOTE: for debug
-        print('collision_detector', self.collision_detector.data)
-        print('Out of road: ', self.out_of_road)
+        # update the stopped counter
+        if self.get_velocity() < 0.5:
+            self.stopped_count += 1
+        else:
+            self.stopped_count = 0
 
+        # NOTE: for debug
+        logger.debug(f'collision_detector: {self.collision_detector.data}')
+        logger.debug(f'Out of road: {self.out_of_road}')
+        logger.debug(f'stopped count: {self.stopped_count}')
         logger.debug(f'Velocity: {self.get_velocity():6.02f} '
                      f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
-
 
         # calculate the reward
         reward = self.get_reward()
@@ -223,28 +184,44 @@ class Environment(gym.Env):
         self.vehicle.apply_control(self.vehicle_control)
 
     def get_reward(self) -> float:
-        # TODO: implemention
+        reward = 0.
 
         # end of scenario reward
         if not self.episode_alive:
-            scenario = self.world_handler.scenario_runner
-            fail, result = scenario.scenario_manager.scenario_final_state()
-            # this is for debug
-            print('End scenario:', fail, result)
+            if self.task_failed:
+                return self.reward_failure
+            else:
+                return self.reward_success
 
         # stop and red light tests
         for test in self.tests[:2]:
-            print(test.name, test.test_status)
+            # print(test.name, test.test_status)
             if test.test_status == 'FAILURE':
                 test.test_status = 'RESET'
-                # TODO: add reward here
+                return self.reward_failure
 
-        # TODO: add reward based on steering
-        # self.vehicle_control.steer
+        # vehicle too long stopped
+        if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
+            return self.reward_failure
 
-        if self.out_of_road: return -10.
+        # out of road
+        if self.out_of_road:
+            reward += self.reward_wrong_lane
 
-        return 0.
+        # steering reward (based on steer diff)
+        reward += self.reward_steer * (self.prev_steer - self.vehicle_control.steer)
+        # hold the previous steer value here, cause we only use it here
+        self.prev_steer = self.vehicle_control.steer
+
+        # if the vehicle has speed lower then the given max, scale linearly the reward
+        # else (above the speed limit), give penalty
+        speed = self.get_velocity()
+        if speed <= self.reward_max_speed:
+            reward += self.reward_speed * (speed / self.reward_max_speed)
+        else:
+            reward += -self.reward_speed
+
+        return reward
 
     def get_state(self):
         return self.sensor_interface.get_data()
@@ -254,8 +231,14 @@ class Environment(gym.Env):
 
         :return: (terminated, truncated)
         '''
-        if not self.episode_alive: return (True, False)
-        if len(self.collision_detector.data) > 0: return (True, False)
+        if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
+            return (True, True)
+        if not self.episode_alive: return (True, True)
+        if len(self.collision_detector.data) > 0: return (True, True)
+        if self.termination_on_run:
+            for test in self.tests[:2]:
+                if test.test_status == 'FAILURE':
+                    return (True, True)
 
         # TODO: check for max steps and maybe more???
 
@@ -380,6 +363,48 @@ class Environment(gym.Env):
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
+
+    def create_observation_space(self):
+        obs_space = {}
+        for sensor in self.sensors_config:
+            if sensor['type'] == 'sensor.camera.rgb':
+                space = gym.spaces.Box(
+                        low=0,
+                        high=255,
+                        shape=(sensor['height'], sensor['width']),
+                        dtype=np.uint8,
+                        )
+            elif sensor['type'] == 'sensor.other.gnss':
+                space = gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(3,),
+                        dtype=np.float64,
+                        )
+            elif sensor['type'] == 'sensor.other.imu':
+                space = gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(7,),
+                        dtype=np.float64,
+                        )
+            elif sensor['type'] == 'sensor.speedometer':
+                 space = gym.spaces.Dict({
+                    'speed': gym.spaces.Box(
+                        low=float("-inf"),
+                        high=float("inf"),
+                        shape=(1,),
+                        dtype=np.float64,
+                        )
+                    })
+            else:
+                logger.warning(f"{sensor['type']} not implemented for the observation space")
+                continue
+            obs_space[sensor['id']] = gym.spaces.Tuple((
+                gym.spaces.Box(low=0, high=float("inf"), shape=(1,), dtype=np.int64),
+                space,
+                ))
+        return gym.spaces.Dict(obs_space)
 
     def reset_env_sensors(self):
         world = CarlaDataProvider.get_world()

@@ -5,6 +5,7 @@ from omegaconf import DictConfig
 import gymnasium as gym
 import logging
 import carla
+from omegaconf import DictConfig, OmegaConf
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -28,9 +29,16 @@ def checkpoint_parse_configuration_file(filename):
 
 class CILv2_env(gym.Env):
     def __init__(self, env_config: DictConfig, path_to_conf_file):
+        if not isinstance(env_config, DictConfig): config = OmegaConf.create(dict(env_config))
+
         #  current global plans to reach a destination
         self._global_plan = None
         self._global_plan_world_coord = None
+
+        self.left_change_count = 0
+        self.right_change_count = 0
+
+        self.reward_wrong_lane = env_config.get('reward_wrong_lane', -1.)
 
         # this data structure will contain all sensor data
         self.sensor_interface = SensorInterface()
@@ -144,19 +152,33 @@ class CILv2_env(gym.Env):
             plan_wp = self.env.map.get_waypoint(self.waypointer._global_route[0][0].location)
             lane_change_left = self.direction[0][4] > 0
             lane_change_right = self.direction[0][5] > 0
+            if lane_change_left:
+                self.left_change_count = 10
+            elif self.left_change_count > 0:
+                self.left_change_count -= 1
+            if lane_change_right:
+                self.right_change_count = 10
+            elif self.right_change_count > 0:
+                self.right_change_count -= 1
 
-            # for the front corners of the vehicle
-            # for i, wp in enumerate(self.env.bbox_wp[:2]):
-            for wp in self.env.bbox_wp[:2]:
+            # for the front corners
+            for i, wp in enumerate(self.env.bbox_wp[:2]):
                 # check out of lane
                 if wp.lane_id != plan_wp.lane_id:
-                    if wp.lane_type is not carla.LaneType.Driving:
-                        continue
+                    if wp.lane_type is not carla.LaneType.Driving: continue
                     if lane_change_left and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
                         continue
                     if lane_change_right and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
                         continue
-                    return -10.
+
+                    if command in [RoadOption.STRAIGHT, RoadOption.LANEFOLLOW]:
+                        # if we had a left change: for the right front corner check if it still on the other lane
+                        if self.left_change_count > 0 and i == 1 and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
+                            continue
+                        # if we had a right change: for the left front corner check if it still on the other lane
+                        if self.right_change_count > 0 and i == 0 and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
+                            continue
+                    return self.reward_wrong_lane
 
         return 0.
 
