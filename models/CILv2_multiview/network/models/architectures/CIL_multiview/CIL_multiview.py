@@ -113,6 +113,40 @@ class CIL_multiview(nn.Module):
 
         return action_output, resnet_inter, attn_weights
 
+    def forward_tensors(self, s, s_d, s_s):
+        S = int(g_conf['ENCODER_INPUT_FRAMES_NUM'])
+        B = s_d.shape[0]
+
+        x = s
+        # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
+        x = x.view(B*S*len(g_conf['DATA_USED']), g_conf['IMAGE_SHAPE'][0], g_conf['IMAGE_SHAPE'][1], g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
+        d = s_d
+        s = s_s
+
+        # image embedding
+        e_p, _ = self.encoder_embedding_perception(x)    # [B*S*cam, dim, h, w]
+        encoded_obs = e_p.view(B, S*len(g_conf['DATA_USED']), self.res_out_dim, self.res_out_h*self.res_out_w)  # [B, S*cam, dim, h*w]
+        encoded_obs = encoded_obs.transpose(2, 3).reshape(B, -1, self.res_out_dim)  # [B, S*cam*h*w, 512]
+        e_d = self.command(d).unsqueeze(1)     # [B, 1, 512]
+        e_s = self.speed(s).unsqueeze(1)       # [B, 1, 512]
+
+        encoded_obs = encoded_obs + e_d + e_s
+
+        if self.params['TxEncoder']['learnable_pe']:
+            # positional encoding
+            pe = encoded_obs + self.positional_encoding    # [B, S*cam*h*w, 512]
+        else:
+            pe = self.positional_encoding(encoded_obs)
+
+        # Transformer encoder multi-head self-attention layers
+        in_memory, _ = self.tx_encoder(pe)  # [B, S*cam*h*w, 512]
+
+        in_memory = torch.mean(in_memory, dim=1)  # [B, 512]
+
+        action_output = self.action_output(in_memory).unsqueeze(1)  # (B, 512) -> (B, 1, len(TARGETS))
+
+        return action_output         # (B, 1, 1), (B, 1, len(TARGETS))
+
     def generate_square_subsequent_mask(self, sz):
         r"""Generate a square mask for the sequence. The masked positions are filled with float('-inf').
             Unmasked positions are filled with float(0.0).
