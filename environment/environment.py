@@ -133,7 +133,6 @@ class Environment(gym.Env):
 
         # update scenario
         self.episode_alive, self.task_failed = self.world_handler.step()
-        print('episode_alive: ', self.episode_alive)
 
         if self.render_rgb_camera_flag: self.render_rgb_camera()
 
@@ -149,7 +148,9 @@ class Environment(gym.Env):
         else:
             self.stopped_count = 0
 
-        # NOTE: for debug
+        # NOTE: for debug, remove later???
+        if not self.episode_alive:
+            logger.debug(f'End episode. Task failed: {self.task_failed}')
         logger.debug(f'collision_detector: {self.collision_detector.data}')
         logger.debug(f'Out of road: {self.out_of_road}')
         logger.debug(f'stopped count: {self.stopped_count}')
@@ -346,7 +347,7 @@ class Environment(gym.Env):
             # initialize Sensor class for the sensors
             camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
             camera_bp.set_attribute('image_size_x', '600')
-            camera_bp.set_attribute('image_size_y', '600')
+            camera_bp.set_attribute('image_size_y', '200')
             camera_bp.set_attribute('fov', '120')
 
             # camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
