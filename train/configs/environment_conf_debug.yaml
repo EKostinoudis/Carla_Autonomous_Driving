@@ -34,6 +34,12 @@ criteria_enable: true
 
 # free ride
 # run_type: free ride # can be w/e except route and scenario
-# num_of_vehicles: 10
 # map: null
+#
+# num_of_vehicles: 10
 # num_of_walkers: 10
+# or can use (work on towns 1-6)
+# traffic_state: Busy # Zero, Light, Medium, Busy
+#
+# random_weather: true
+# dynamic_weather: true

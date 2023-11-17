@@ -6,8 +6,12 @@ import carla
 from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
 
+from environment.traffic_calculator import get_traffic
+
 from .scenarios import ScenarioRunner
 from .traffic_generator import TrafficGenerator
+from .weather_handler import WeatherHandler
+from .traffic_calculator import get_traffic, TrafficState, to_traffic_state
 
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
@@ -100,8 +104,26 @@ class WorldHandler():
                     )
             self.configs = self.scenario_runner.create_configs()
         else:
-            self.num_of_vehicles = config.get('num_of_vehicles', 0)
-            self.num_of_walkers = config.get('num_of_walkers', 0)
+            if OmegaConf.is_missing(config, "num_of_vehicles") or \
+                    OmegaConf.is_missing(config, "num_of_walkers"):
+                # if the traffic state is given and it is valid use it,
+                # else pick a random state
+                traffic_state = config.get('traffic_state', None)
+                traffic_state = to_traffic_state(traffic_state)
+                if traffic_state is None:
+                    traffic_state = random.choice(list(TrafficState))
+                self.num_of_vehicles, self.num_of_walkers = get_traffic(
+                    CarlaDataProvider.get_map().name[-6:],
+                    traffic_state,
+                )
+            else:
+                self.num_of_vehicles = config.get('num_of_vehicles', 0)
+                self.num_of_walkers = config.get('num_of_walkers', 0)
+
+            # create the weather handler
+            self.weather_handler = WeatherHandler()
+            self.random_weather = config.get('random_weather', False)
+            self.dynamic_weather = config.get('dynamic_weather', False)
 
             if self.map is not None:
                 # load world if given
@@ -155,6 +177,12 @@ class WorldHandler():
             self.world = self.client.get_world()
             CarlaDataProvider.set_world(self.world)
 
+            # weather control
+            self.weather_handler.reset(
+                random_weather=self.random_weather,
+                dynamic_weather=self.dynamic_weather,
+            )
+
             # create the ego vehicle
             self.create_actor()
             trajectory = [self.vehicle.get_location(), self.destination]
@@ -166,8 +194,6 @@ class WorldHandler():
                 self.num_of_vehicles,
                 self.num_of_walkers,
                 )
-
-            # TODO: weather control???
 
         self.gps_route, self.vehicle_route = interpolate_trajectory(self.world, trajectory)
 
@@ -188,6 +214,9 @@ class WorldHandler():
             if not running:
                 task_fail, _ = self.scenario_runner.scenario_manager.scenario_final_state()
         else:
+            self.weather_handler.tick(self.fixed_delta_seconds)
+
+            # end condition
             running = self.vehicle.get_location().distance(self.destination) > 5.0
         return (running, task_fail)
 
