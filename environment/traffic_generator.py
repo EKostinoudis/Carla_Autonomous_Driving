@@ -22,6 +22,7 @@ class TrafficGenerator():
         self.vehicles_list = []
         self.walkers_list = []
         self.controllers_list = []
+        self.controllers = []
 
         if self.num_of_vehicles == 0 and self.num_of_walkers == 0: return
 

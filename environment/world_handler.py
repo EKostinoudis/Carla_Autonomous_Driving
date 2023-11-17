@@ -104,8 +104,10 @@ class WorldHandler():
                     )
             self.configs = self.scenario_runner.create_configs()
         else:
-            if OmegaConf.is_missing(config, "num_of_vehicles") or \
-                    OmegaConf.is_missing(config, "num_of_walkers"):
+            if "num_of_vehicles" in config and "num_of_walkers" in config:
+                self.num_of_vehicles = config.get('num_of_vehicles', 0)
+                self.num_of_walkers = config.get('num_of_walkers', 0)
+            else:
                 # if the traffic state is given and it is valid use it,
                 # else pick a random state
                 traffic_state = config.get('traffic_state', None)
@@ -116,9 +118,6 @@ class WorldHandler():
                     CarlaDataProvider.get_map().name[-6:],
                     traffic_state,
                 )
-            else:
-                self.num_of_vehicles = config.get('num_of_vehicles', 0)
-                self.num_of_walkers = config.get('num_of_walkers', 0)
 
             # create the weather handler
             self.weather_handler = WeatherHandler()
@@ -207,6 +206,9 @@ class WorldHandler():
         # update GameTime
         world = CarlaDataProvider.get_world()
         GameTime.on_carla_tick(world.get_snapshot().timestamp)
+
+        # update data provider
+        CarlaDataProvider.on_carla_tick()
 
         task_fail = False
         if self.scenario_runner:

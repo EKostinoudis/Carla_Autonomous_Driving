@@ -93,12 +93,12 @@ class WeatherHandler():
                 weather = choice(WEATHER_PRESETS)
             else:
                 # get current weather
-                weather = CarlaDataProvider.get_world.get_weather()
+                weather = CarlaDataProvider.get_world().get_weather()
         self.weather = weather
 
         self._sun = Sun(weather.sun_azimuth_angle, weather.sun_altitude_angle)
         self._storm = Storm(weather.precipitation)
-        CarlaDataProvider.get_world.set_weather(self.weather)
+        CarlaDataProvider.get_world().set_weather(self.weather)
 
     def tick(self, delta_seconds):
         if self.dynamic_weather:
@@ -112,7 +112,7 @@ class WeatherHandler():
             self.weather.wetness = self._storm.wetness
             self.weather.sun_azimuth_angle = self._sun.azimuth
             self.weather.sun_altitude_angle = self._sun.altitude
-            CarlaDataProvider.get_world.set_weather(self.weather)
+            CarlaDataProvider.get_world().set_weather(self.weather)
 
     def __str__(self):
         return '%s %s' % (self._sun, self._storm)
