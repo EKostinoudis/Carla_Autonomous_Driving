@@ -78,7 +78,7 @@ class TrafficGenerator():
         # From here we handle walkers
         # NOTE: if 0 walkers then return
         if self.num_of_walkers == 0:
-            logger.info(f'Spawned {len(self.vehicles_list)} vehicles. No walkers spawned.')
+            logger.debug(f'Spawned {len(self.vehicles_list)} vehicles. No walkers spawned.')
             return
 
         walkers_speed = []
@@ -138,16 +138,16 @@ class TrafficGenerator():
             controller.go_to_location(self.world.get_random_location_from_navigation())
             controller.set_max_speed(float(speed))
 
-        logger.info(f'Spawned {len(self.vehicles_list)} vehicles.')
-        logger.info(f'Spawned {len(self.walkers_list)} walkers and {len(self.controllers_list)} controllers.')
+        logger.debug(f'Spawned {len(self.vehicles_list)} vehicles.')
+        logger.debug(f'Spawned {len(self.walkers_list)} walkers and {len(self.controllers_list)} controllers.')
 
     def destroy(self):
-        logger.info('Destroying vehicle actors.')
+        logger.debug('Destroying vehicle actors.')
         self.client.apply_batch([carla.command.DestroyActor(x) for x in self.vehicles_list])
         self.world.tick() # just in case
         self.vehicles_list = []
 
-        logger.info('Stoping the controllers and destroy the walkers and controllers.')
+        logger.debug('Stoping the controllers and destroy the walkers and controllers.')
 
         # stop the controllers
         for controller in self.controllers: controller.stop()

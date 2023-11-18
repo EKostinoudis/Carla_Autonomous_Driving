@@ -214,7 +214,7 @@ class Environment(gym.Env):
         # hold the previous steer value here, cause we only use it here
         self.prev_steer = self.vehicle_control.steer
 
-        # if the vehicle has speed lower then the given max, scale linearly the reward
+        # if the vehicle has speed lower than the given max, scale linearly the reward
         # else (above the speed limit), give penalty
         speed = self.get_velocity()
         if speed <= self.reward_max_speed:
@@ -277,7 +277,7 @@ class Environment(gym.Env):
         return 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
 
     def check_out_of_road(self) -> bool:
-        # get the 4 corners of the vehicle and then its waypoints
+        # get the 4 corners of the vehicle and then the corresponding waypoints
         # based on OnSidewalkTest class from srunner/scenariomanager/scenarioatomics/atomic_criteria.py
         transform = CarlaDataProvider.get_transform(self.vehicle)
         location = transform.location
