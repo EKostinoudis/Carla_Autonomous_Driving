@@ -2,6 +2,7 @@ __pycache__/
 runs/
 remote_runs/
 ray_results/
+tests/
 .idea/
 
 /*.py

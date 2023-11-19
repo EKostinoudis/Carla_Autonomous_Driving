@@ -207,6 +207,30 @@ class CIL_multiview_rllib(TorchModelV2, CIL_multiview_actor_critic):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         CIL_multiview_actor_critic.__init__(self, g_conf)
 
+        # If true: train only the value function (critic) FC layer
+        pretrain_value = False
+
+        custom_model_config = model_config.get('custom_model_config')
+        if custom_model_config is not None:
+            pretrain_value = custom_model_config.get('pretrain_value')
+
+            # load checkpoint if given
+            checkpoint = custom_model_config.get('checkpoint')
+            if checkpoint is not None:
+                checkpoint = torch.load(
+                    checkpoint,
+                    map_location=next(self.parameters()).device,
+                )['model']
+                self.load_state_dict(checkpoint)
+
+        # tried to overwrite the trainable_variables method but it didn't work
+        # this is a workaround
+        if pretrain_value:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.value_output.parameters():
+                param.requires_grad = True
+
     def forward(self, input_dict, state, seq_lens):
         s, s_d, s_s = input_dict["obs"]
         action_output = CIL_multiview_actor_critic.forward(self, s, s_d, s_s)
@@ -216,6 +240,30 @@ class CIL_multiview_rllib_stack(TorchModelV2, CIL_multiview_actor_critic_stack):
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         CIL_multiview_actor_critic_stack.__init__(self, g_conf)
+
+        # If true: train only the value function (critic) FC layer
+        pretrain_value = False
+
+        custom_model_config = model_config.get('custom_model_config')
+        if custom_model_config is not None:
+            pretrain_value = custom_model_config.get('pretrain_value')
+
+            # load checkpoint if given
+            checkpoint = custom_model_config.get('checkpoint')
+            if checkpoint is not None:
+                checkpoint = torch.load(
+                    checkpoint,
+                    map_location=next(self.parameters()).device,
+                )['model']
+                self.load_state_dict(checkpoint)
+
+        # tried to overwrite the trainable_variables method but it didn't work
+        # this is a workaround
+        if pretrain_value:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.value_output.parameters():
+                param.requires_grad = True
 
     def forward(self, input_dict, state, seq_lens):
         s, s_d, s_s = input_dict["obs"]
