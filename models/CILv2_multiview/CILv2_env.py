@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 import numpy as np
@@ -6,6 +8,7 @@ import gymnasium as gym
 import logging
 import carla
 from omegaconf import DictConfig, OmegaConf
+from ray.rllib.env.env_context import EnvContext
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -28,8 +31,17 @@ def checkpoint_parse_configuration_file(filename):
            configuration_dict['agent_name']
 
 class CILv2_env(gym.Env):
-    def __init__(self, env_config: DictConfig, path_to_conf_file):
-        if not isinstance(env_config, DictConfig): config = OmegaConf.create(dict(env_config))
+    def __init__(self, env_config: DictConfig | EnvContext, path_to_conf_file):
+        # for the RLlib training:
+        # update the port so every worker has different port
+        if isinstance(env_config, EnvContext):
+            offset = env_config.worker_index
+            port = env_config.get('port', 2000) + 2*offset
+            tm_port = env_config.get('tm_port', 8000) + offset
+            env_config.update({'port': port, 'tm_port': tm_port})
+
+        if not isinstance(env_config, DictConfig):
+            env_config = OmegaConf.create(dict(env_config))
 
         #  current global plans to reach a destination
         self._global_plan = None

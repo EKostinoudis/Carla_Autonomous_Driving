@@ -203,14 +203,13 @@ class CIL_multiview_actor_critic_stack(nn.Module):
         return action_output         # (B, 1, 1), (B, 1, len(TARGETS))
 
 class CIL_multiview_rllib(TorchModelV2, CIL_multiview_actor_critic):
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf):
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf, **custom_model_config):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         CIL_multiview_actor_critic.__init__(self, g_conf)
 
         # If true: train only the value function (critic) FC layer
         pretrain_value = False
 
-        custom_model_config = model_config.get('custom_model_config')
         if custom_model_config is not None:
             pretrain_value = custom_model_config.get('pretrain_value')
 
@@ -237,14 +236,13 @@ class CIL_multiview_rllib(TorchModelV2, CIL_multiview_actor_critic):
         return action_output, state
 
 class CIL_multiview_rllib_stack(TorchModelV2, CIL_multiview_actor_critic_stack):
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf):
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf, **custom_model_config):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         CIL_multiview_actor_critic_stack.__init__(self, g_conf)
 
         # If true: train only the value function (critic) FC layer
         pretrain_value = False
 
-        custom_model_config = model_config.get('custom_model_config')
         if custom_model_config is not None:
             pretrain_value = custom_model_config.get('pretrain_value')
 
