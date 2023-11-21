@@ -9,7 +9,7 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
-from utils import get_config_path, to_native_path
+from train.utils import get_config_path, update_to_abspath
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview.CILv2_env import CILv2_env
@@ -25,7 +25,13 @@ def main(args):
     conf = OmegaConf.load(conf_file)
     env_conf = OmegaConf.load(env_conf_file)
 
-    path_to_conf = os.path.abspath(to_native_path(conf.path_to_conf))
+    # update to absolute paths
+    conf_path_fields = ['path_to_conf', 'checkpoint_file']
+    env_conf_path_fields = ['route', 'scenario_file']
+    update_to_abspath(conf, conf_path_fields)
+    update_to_abspath(env_conf, env_conf_path_fields)
+
+    path_to_conf = conf.path_to_conf
     tune.register_env(
         'CILv2_env',
         lambda rllib_conf: CILv2_env(env_conf, path_to_conf, rllib_conf),
@@ -35,7 +41,7 @@ def main(args):
     if model not in VALID_MODELS:
         raise ValueError(f'model: {model} is not a valid model. Valid models: {VALID_MODELS}')
 
-    checkpoint_file = os.path.abspath(to_native_path(conf.checkpoint_file))
+    checkpoint_file = conf.checkpoint_file
 
     # set the pretrained file to the checkpoint plus the "_value_pretrained"
     # string in the end (before the extension)
@@ -56,6 +62,10 @@ def main(args):
 
     num_cpus = conf.get('num_cpus', None)
     num_gpus = conf.get('num_gpus', None)
+
+    # specify the number of cpus because on a SLURM env it crashes
+    if num_cpus is None:
+        num_cpus = num_workers + 1
 
     ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
 

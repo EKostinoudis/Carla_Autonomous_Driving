@@ -343,6 +343,8 @@ class Environment(gym.Env):
         CarlaDataProvider.get_world().tick()
 
     def init_env_sensors(self):
+        # camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
+        camera_transform = carla.Transform(carla.Location(x=1.5, z=2.1))
         if self.render_rgb_camera_flag:
             # initialize Sensor class for the sensors
             camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
@@ -350,8 +352,6 @@ class Environment(gym.Env):
             camera_bp.set_attribute('image_size_y', '200')
             camera_bp.set_attribute('fov', '120')
 
-            # camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
-            camera_transform = carla.Transform(carla.Location(x=1.5, z=2.1))
             self.rgb_camera = Sensor(camera_bp, camera_transform)
             self.sensors_env.append(self.rgb_camera)
 

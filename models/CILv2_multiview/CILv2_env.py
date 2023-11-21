@@ -242,8 +242,11 @@ class CILv2_env(gym.Env):
         yaml_conf, _, _ = checkpoint_parse_configuration_file(path_to_conf_file)
         g_conf.immutable(False)
         merge_with_yaml(os.path.join(exp_dir, yaml_conf), process_type='drive')
-        set_type_of_process('train_only', root=os.path.join(*os.path.normpath(exp_dir).split(os.path.sep)[:-3]))
 
+        root_dir = os.path.join(*os.path.normpath(exp_dir).split(os.path.sep)[:-3])
+        if exp_dir[0] == os.path.sep:
+            root_dir = os.path.sep + root_dir
+        set_type_of_process('train_only', root=root_dir)
 
     def set_world(self, world):
         self.world = world

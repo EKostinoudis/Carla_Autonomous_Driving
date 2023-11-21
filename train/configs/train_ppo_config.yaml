@@ -8,7 +8,7 @@ checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor
 path_to_conf: ./models/CILv2_multiview/_results/Ours/Town12346_5/config40.json
 
 # numbe of cpus and gpus passed to ray init
-# num_cpus must be at least num_workers + 1
+# num_cpus must be at least num_workers + 1 (if null we use this value)
 # num_gpus must be bigger than the given gpus
 # these values can also be null (None in Python) so the default value will be used
 num_cpus: null

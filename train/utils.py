@@ -62,3 +62,10 @@ def get_config_path(config: str) -> str:
     else:
         return os.path.join(to_native_path('./train/configs'), config)
 
+def update_to_abspath(conf, fields):
+    for field in fields:
+        value = conf.get(field, None)
+        if value is not None:
+            value = os.path.abspath(to_native_path(value))
+            conf.update({field: value})
+
