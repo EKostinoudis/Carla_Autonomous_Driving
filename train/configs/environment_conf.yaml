@@ -1,0 +1,54 @@
+# mainly used for debuging, if true opens a window and displays the camera of
+# the vehicle
+render_rgb_camera: false
+
+# terminate the episode if the vehicle runs a red light or a stop
+termination_on_run: true
+
+# terminate the episode if the vehicle doesn't move for the given time
+stopped_termination_seconds: 90
+
+seed: 0
+
+# reward contants
+reward_failure: -10.0
+reward_success: 10.0
+reward_wrong_lane: -1.0
+reward_steer: -0.1
+reward_speed: 0.1
+reward_max_speed: 30.0
+
+# for the carla server
+ip: localhost
+port: 2000
+tm_port: 8000
+timeout: 30.0
+fixed_delta_seconds: 0.1
+max_substeps: 15
+
+# for the route picking
+# if false: cycle throw all the scenarios
+pick_random: true
+
+run_type: route
+route: srunner/data/routes_training.xml
+scenario_file: srunner/data/all_towns_traffic_scenarios.json
+single_route: null
+criteria_enable: true
+
+# scenario
+# run_type: scenario
+# scenario: None
+# randomize: True
+
+# free ride
+# run_type: free ride # can be w/e except route and scenario
+# map: null
+#
+# num_of_vehicles: 10
+# num_of_walkers: 10
+# or can use (work on towns 1-6)
+# traffic_state: Busy # Zero, Light, Medium, Busy
+#
+# random_weather: true
+# dynamic_weather: true

@@ -9,29 +9,41 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
-from models.CILv2_multiview import CILv2_env, CIL_multiview_rllib, CIL_multiview_rllib_stack
+from utils import get_config_path, to_native_path
+
+from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
+from models.CILv2_multiview.CILv2_env import CILv2_env
 
 VALID_MODELS = ["CIL_multiview_rllib", "CIL_multiview_rllib_stack"]
 ModelCatalog.register_custom_model("CIL_multiview_rllib", CIL_multiview_rllib)
 ModelCatalog.register_custom_model("CIL_multiview_rllib_stack", CIL_multiview_rllib_stack)
 
 def main(args):
-    if os.path.sep in args.config:
-        conf_file = args.config
-    else:
-        conf_file = os.path.join(*'./train/configs'.split('/'), args.config)
+    conf_file = get_config_path(args.config)
+    env_conf_file = get_config_path(args.env_config)
 
     conf = OmegaConf.load(conf_file)
+    env_conf = OmegaConf.load(env_conf_file)
+
+    path_to_conf = os.path.abspath(to_native_path(conf.path_to_conf))
+    tune.register_env(
+        'CILv2_env',
+        lambda rllib_conf: CILv2_env(env_conf, path_to_conf, rllib_conf),
+    )
 
     model = conf.model
     if model not in VALID_MODELS:
         raise ValueError(f'model: {model} is not a valid model. Valid models: {VALID_MODELS}')
 
-    checkpoint_file = os.path.abspath(conf.checkpoint_file)
+    checkpoint_file = os.path.abspath(to_native_path(conf.checkpoint_file))
+
+    # set the pretrained file to the checkpoint plus the "_value_pretrained"
+    # string in the end (before the extension)
+    base, ext = os.path.splitext(checkpoint_file)
+    pretrained_file = base + '_value_pretrained' + ext
 
     # for pretraining the value function
     pretrain_value = conf.pretrain_value
-    pretrained_file = os.path.abspath(conf.pretrained_file)
     pretrain_iters = conf.pretrain_iters
 
     train_iters = conf.train_iters
@@ -42,18 +54,19 @@ def main(args):
 
     extra_params = conf.extra_params
 
+    num_cpus = conf.get('num_cpus', None)
+    num_gpus = conf.get('num_gpus', None)
 
-    # TODO: add cpus and gpus???
-    ray.init()
+    ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
 
     if pretrain_value:
         config = (
             PPOConfig()
-            .environment(CILv2_env)
+            .environment('CILv2_env')
             .framework('torch')
             .training(
                 model={ 
-                    "custom_model": "my_custom_model",
+                    "custom_model": model,
                     "custom_model_config": {
                         'checkpoint': checkpoint_file,
                         'pretrain_value': True,
@@ -94,10 +107,10 @@ def main(args):
 
     config = (
         PPOConfig()
-        .environment(CILv2_env)
+        .environment('CILv2_env')
         .framework('torch')
         .training(model={ 
-            "custom_model": "my_custom_model",
+            "custom_model": model,
             "custom_model_config": {
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
@@ -130,6 +143,11 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config',
                         default='train_ppo_config.yaml',
                         help='Filename or whole path to the config',
+                        type=str,
+                        )
+    parser.add_argument('-e', '--env_config',
+                        default='environment_conf.yaml',
+                        help='Filename or whole path to the environment config',
                         type=str,
                         )
     args = parser.parse_args()

@@ -1,3 +1,4 @@
+import os
 import torch
 import random
 import numpy as np
@@ -48,4 +49,16 @@ def forward_actor_critic(model, data):
     dist = TorchBeta(beta_out, None, low=-1, high=1)
     out = dist.sample().squeeze(1)
     return out[:, 0], out[:, 1]
+
+def to_native_path(path: str) -> str:
+    '''Changes the "/" character to the native path separator'''
+    return os.path.join(*path.split('/'))
+
+def get_config_path(config: str) -> str:
+    '''Append the './train/configs' to the path if needed'''
+    config = to_native_path(config)
+    if os.path.sep in config:
+        return config
+    else:
+        return os.path.join(to_native_path('./train/configs'), config)
 
