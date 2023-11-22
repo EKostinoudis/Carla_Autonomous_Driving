@@ -41,6 +41,7 @@ class Sensor():
     def destroy(self):
         logger.debug(f'Destroying sensor: {self.blueprint.id}')
         if self.sensor is not None:
+            self.sensor.stop()
             self.sensor.destroy()
             self.sensor = None
 

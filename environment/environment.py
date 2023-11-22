@@ -326,7 +326,13 @@ class Environment(gym.Env):
         `destroy_actors_all` method.
         '''
         for sensor in self.sensors_env: sensor.destroy()
-        for sensor in self.sensors: sensor.destroy()
+        for i, _ in enumerate(self.sensors):
+            if self.sensors[i] is not None:
+                self.sensors[i].stop()
+                self.sensors[i].destroy()
+                self.sensors[i] = None
+        self.sensors = []
+
         CarlaDataProvider.get_world().tick()
 
     def destroy_actors_all(self):

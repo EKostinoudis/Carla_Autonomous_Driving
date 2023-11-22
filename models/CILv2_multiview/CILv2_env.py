@@ -42,7 +42,7 @@ class CILv2_env(gym.Env):
         # update the port so every worker has different port
         if rllib_config is not None:
             offset = rllib_config.worker_index - 1
-            seed = env_config.get('seed', random.randint(0, 10000)) + 5*offset
+            seed = env_config.get('seed', random.randint(0, 10000)) + offset
             port = env_config.get('port', 2000) + 2*offset
             tm_port = env_config.get('tm_port', 8000) + offset
             env_config.update({'port': port, 'tm_port': tm_port, 'seed': seed})
