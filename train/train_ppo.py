@@ -14,10 +14,13 @@ from train.utils import get_config_path, update_to_abspath
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
+from ray.rllib.models.torch.torch_action_dist import TorchBeta
 
 VALID_MODELS = ["CIL_multiview_rllib", "CIL_multiview_rllib_stack"]
 ModelCatalog.register_custom_model("CIL_multiview_rllib", CIL_multiview_rllib)
 ModelCatalog.register_custom_model("CIL_multiview_rllib_stack", CIL_multiview_rllib_stack)
+ModelCatalog.register_custom_action_dist("beta", TorchBeta)
+
 
 def main(args):
     conf_file = get_config_path(args.config)
@@ -82,6 +85,7 @@ def main(args):
             .training(
                 model={ 
                     "custom_model": model,
+                    "custom_action_dist": "beta",
                     "custom_model_config": {
                         'g_conf': g_conf,
                         'checkpoint': checkpoint_file,
@@ -127,6 +131,7 @@ def main(args):
         .framework('torch')
         .training(model={ 
             "custom_model": model,
+            "custom_action_dist": "beta",
             "custom_model_config": {
                 'g_conf': g_conf,
                 'checkpoint': checkpoint_file,

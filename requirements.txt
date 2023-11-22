@@ -7,7 +7,7 @@ pyyaml
 torch
 torchvision
 tensorboard
-ray[rllib]
+ray[data,train,tune,serve,rllib]
 accelerate
 
 omegaconf
