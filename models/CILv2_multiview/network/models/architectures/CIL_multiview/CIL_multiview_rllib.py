@@ -68,8 +68,10 @@ class CIL_multiview_actor_critic(nn.Module):
         B = s_d.shape[0]
 
         x = s
-        # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
-        x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
+
+        # view failed on RLlib training :(
+        x = x.reshape(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
+        # x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
         d = s_d
         s = s_s
 
@@ -164,8 +166,9 @@ class CIL_multiview_actor_critic_stack(nn.Module):
         B = s_d.shape[0]
 
         x = s
-        # x = torch.stack([torch.stack(s[i], dim=1) for i in range(S)], dim=1) # [B, S, cam, 3, H, W]
-        x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
+        # view failed on RLlib training :(
+        x = x.reshape(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
+        # x = x.view(B*S*len(self.g_conf['DATA_USED']), self.g_conf['IMAGE_SHAPE'][0], self.g_conf['IMAGE_SHAPE'][1], self.g_conf['IMAGE_SHAPE'][2])  # [B*S*cam, 3, H, W]
         d = s_d
         s = s_s
 
