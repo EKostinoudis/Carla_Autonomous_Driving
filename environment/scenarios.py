@@ -260,7 +260,6 @@ class ScenarioRunner():
 
         self._set_synchronous_world()
 
-        # CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
 
         self.world.tick()

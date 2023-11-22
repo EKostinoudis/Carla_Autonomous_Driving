@@ -240,6 +240,7 @@ class WorldHandler():
         '''
 
         CarlaDataProvider.cleanup()
+        CarlaDataProvider.set_client(self.client)
 
         if self.traffic_generator is not None:
             self.traffic_generator.destroy()
