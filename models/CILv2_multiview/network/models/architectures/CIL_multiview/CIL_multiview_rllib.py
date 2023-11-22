@@ -232,8 +232,13 @@ class CIL_multiview_rllib(TorchModelV2, CIL_multiview_actor_critic):
 
     def forward(self, input_dict, state, seq_lens):
         s, s_d, s_s = input_dict["obs"]
-        action_output = CIL_multiview_actor_critic.forward(self, s, s_d, s_s)
+        if len(s_d.shape) == 3: s_d = s_d.squeeze(1)
+        if len(s_s.shape) == 3: s_s = s_s.squeeze(1)
+        action_output = CIL_multiview_actor_critic.forward(self, s, s_d, s_s).squeeze(1)
         return action_output, state
+
+    def value_function(self):
+        return self._value_out.view(-1)
 
 class CIL_multiview_rllib_stack(TorchModelV2, CIL_multiview_actor_critic_stack):
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, g_conf, **custom_model_config):
@@ -265,5 +270,10 @@ class CIL_multiview_rllib_stack(TorchModelV2, CIL_multiview_actor_critic_stack):
 
     def forward(self, input_dict, state, seq_lens):
         s, s_d, s_s = input_dict["obs"]
-        action_output = CIL_multiview_actor_critic_stack.forward(self, s, s_d, s_s)
+        if len(s_d.shape) == 3: s_d = s_d.squeeze(1)
+        if len(s_s.shape) == 3: s_s = s_s.squeeze(1)
+        action_output = CIL_multiview_actor_critic_stack.forward(self, s, s_d, s_s).squeeze(1)
         return action_output, state
+
+    def value_function(self):
+        return self._value_out.view(-1)

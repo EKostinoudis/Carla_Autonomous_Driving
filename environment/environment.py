@@ -325,7 +325,7 @@ class Environment(gym.Env):
         `destroy_actors_all` method.
         '''
         for sensor in self.sensors_env: sensor.destroy()
-        for sensor in self.sensors: sensor.destroy()
+        # for sensor in self.sensors: sensor.destroy()
 
         CarlaDataProvider.get_world().tick()
 

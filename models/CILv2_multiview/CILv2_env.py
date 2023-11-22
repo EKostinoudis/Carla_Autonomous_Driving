@@ -77,12 +77,12 @@ class CILv2_env(gym.Env):
             gym.spaces.Box(
                 low=float('-inf'),
                 high=float('inf'),
-                shape=(1, 1, 6),
+                shape=(1, 6),
                 dtype=np.float32,),
             gym.spaces.Box(
                 low=float('-inf'),
                 high=float('inf'),
-                shape=(1, 1, 1),
+                shape=(1, 1),
                 dtype=np.float32,),
         ))
 
@@ -243,9 +243,7 @@ class CILv2_env(gym.Env):
         g_conf.immutable(False)
         merge_with_yaml(os.path.join(exp_dir, yaml_conf), process_type='drive')
 
-        root_dir = os.path.join(*os.path.normpath(exp_dir).split(os.path.sep)[:-3])
-        if exp_dir[0] == os.path.sep:
-            root_dir = os.path.sep + root_dir
+        root_dir = os.path.abspath(os.path.join(exp_dir, '..', '..', '..'))
         set_type_of_process('train_only', root=root_dir)
 
     def set_world(self, world):

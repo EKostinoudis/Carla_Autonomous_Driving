@@ -12,6 +12,7 @@ from ray.rllib.models import ModelCatalog
 from train.utils import get_config_path, update_to_abspath
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
+from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
 
 VALID_MODELS = ["CIL_multiview_rllib", "CIL_multiview_rllib_stack"]
@@ -60,6 +61,9 @@ def main(args):
 
     extra_params = conf.extra_params
 
+    # update g_conf
+    merge_with_yaml(os.path.join(os.path.dirname(path_to_conf), 'CILv2.yaml'))
+
     num_cpus = conf.get('num_cpus', None)
     num_gpus = conf.get('num_gpus', None)
 
@@ -78,6 +82,7 @@ def main(args):
                 model={ 
                     "custom_model": model,
                     "custom_model_config": {
+                        'g_conf': g_conf,
                         'checkpoint': checkpoint_file,
                         'pretrain_value': True,
                     },
@@ -122,6 +127,7 @@ def main(args):
         .training(model={ 
             "custom_model": model,
             "custom_model_config": {
+                'g_conf': g_conf,
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
             },
