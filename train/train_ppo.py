@@ -48,9 +48,9 @@ def main(args):
         lambda rllib_conf: CILv2_env(env_conf, path_to_conf, rllib_conf),
     )
 
-    model = conf.model
-    if model not in VALID_MODELS:
-        raise ValueError(f'model: {model} is not a valid model. Valid models: {VALID_MODELS}')
+    model_name: str = conf.model
+    if model_name not in VALID_MODELS:
+        raise ValueError(f'model: {model_name} is not a valid model. Valid models: {VALID_MODELS}')
 
     checkpoint_file = conf.checkpoint_file
 
@@ -91,7 +91,7 @@ def main(args):
             .framework('torch')
             .training(
                 model={ 
-                    "custom_model": model,
+                    "custom_model": model_name,
                     "custom_action_dist": "beta",
                     "custom_model_config": {
                         'g_conf': g_conf,
@@ -137,7 +137,7 @@ def main(args):
         .environment('CILv2_env')
         .framework('torch')
         .training(model={ 
-            "custom_model": model,
+            "custom_model": model_name,
             "custom_action_dist": "beta",
             "custom_model_config": {
                 'g_conf': g_conf,
