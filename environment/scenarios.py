@@ -73,6 +73,7 @@ class ScenarioManager():
 '''Based on ScenarioRunner class of scenario runner'''
 class ScenarioRunner():
     def __init__(self,
+                 client=None,
                  scenario='',
                  scenario_config='',
                  route='',
@@ -107,7 +108,10 @@ class ScenarioRunner():
         self.fixed_delta_seconds = fixed_delta_seconds
         self.max_substeps = max_substeps
 
-        self.client = carla.Client(host, port)
+        if client is not None:
+            self.client = client
+        else:
+            self.client = carla.Client(host, port)
         self.client.set_timeout(timeout)
 
         self.scenario_manager = ScenarioManager()

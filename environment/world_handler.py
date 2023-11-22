@@ -64,6 +64,7 @@ class WorldHandler():
         # init the scenario runner if the type is 'scenario' or 'route'
         if self.run_type == 'scenario':
             self.scenario_runner = ScenarioRunner(
+                    client=self.client,
                     scenario=config.get('scenario_config', 'all'),
                     scenario_config=config.get('scenario_config', ''),
                     host=self.ip,
@@ -90,6 +91,7 @@ class WorldHandler():
                 self.run_type = None
 
             self.scenario_runner = ScenarioRunner(
+                    client=self.client,
                     route=config.route,
                     scenario_file=config.scenario_file,
                     single_route=config.get('single_route', None),
