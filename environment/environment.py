@@ -87,7 +87,7 @@ class Environment(gym.Env):
         self.prev_steer = 0. # previoius steer value
         self.stopped_count = 0 # ticks the vehicle is stopped
 
-        if seed: self.set_seed(seed)
+        if seed is not None: self.set_seed(seed)
 
         self.destroy_sensors()
 

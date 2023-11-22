@@ -10,6 +10,7 @@ import carla
 from omegaconf import DictConfig, OmegaConf
 from ray.rllib.env.env_context import EnvContext
 from typing import Optional
+import random
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -39,11 +40,12 @@ class CILv2_env(gym.Env):
                  ):
         # for the RLlib training:
         # update the port so every worker has different port
-        if rllib_config:
-            offset = rllib_config.worker_index
+        if rllib_config is not None:
+            offset = rllib_config.worker_index - 1
+            seed = env_config.get('seed', random.randint(0, 10000)) + 5*offset
             port = env_config.get('port', 2000) + 2*offset
             tm_port = env_config.get('tm_port', 8000) + offset
-            env_config.update({'port': port, 'tm_port': tm_port})
+            env_config.update({'port': port, 'tm_port': tm_port, 'seed': seed})
 
         if not isinstance(env_config, DictConfig):
             env_config = OmegaConf.create(dict(env_config))
