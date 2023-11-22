@@ -159,7 +159,7 @@ class WorldHandler():
         GameTime.restart()
 
         # if we have a scenario or route run
-        if self.scenario_runner:
+        if self.scenario_runner is not None:
             # pick next config
             config = next(self.configs_iter)
             logger.info(f'Scenario name: {config.name}')
@@ -213,7 +213,7 @@ class WorldHandler():
         CarlaDataProvider.on_carla_tick()
 
         task_fail = False
-        if self.scenario_runner:
+        if self.scenario_runner is not None:
             running = self.scenario_runner.tick()
             if not running:
                 task_fail, _ = self.scenario_runner.scenario_manager.scenario_final_state()
@@ -229,13 +229,15 @@ class WorldHandler():
         self.asynchronous()
 
     def clean(self):
-        if self.scenario_runner:
+        if self.scenario_runner is not None:
             self.scenario_runner.clean()
+        '''
         else:
             # otherwise the CarlaDataProvider will clean the vehicle
             if self.vehicle is not None:
                 self.vehicle.destroy()
                 self.vehicle = None
+        '''
 
         CarlaDataProvider.cleanup()
 
@@ -247,7 +249,8 @@ class WorldHandler():
         '''Picks a random spawn point and spawns the vehicle'''
         spawn_points = CarlaDataProvider.get_map().get_spawn_points()
         world = CarlaDataProvider.get_world()
-        vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('model3')[0]
+        # vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('model3')[0]
+        vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('vehicle.lincoln.mkz_2017')[0]
         while self.vehicle is None:
             transform = random.choice(spawn_points)
 

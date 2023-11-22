@@ -47,6 +47,10 @@ class ScenarioManager():
 
         return self._running
 
+    def clean(self):
+        if self.scenario is not None:
+            self.scenario.terminate()
+
     def scenario_final_state(self):
         failure = False
         timeout = False
@@ -219,6 +223,10 @@ class ScenarioRunner():
         if self.running_scenario:
             self.running_scenario.remove_all_actors()
             self.running_scenario = None
+
+        if self.scenario_manager is not None:
+            self.scenario_manager.clean()
+
         self.ego_vehicles = []
         self.vehicle = None
         self.gps_route, self.vehicle_route = None, None
