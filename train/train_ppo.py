@@ -71,7 +71,8 @@ def main(args):
     if num_cpus is None:
         num_cpus = num_workers + 1
 
-    ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
+    # ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
+    ray.init()
 
     if pretrain_value:
         config = (

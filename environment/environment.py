@@ -114,6 +114,7 @@ class Environment(gym.Env):
         self.vehicle_control.brake = 0.
 
         CarlaDataProvider.get_world().tick()
+        CarlaDataProvider.get_world().tick()
 
         new_state, reward, terminated, truncated, info = self.step([0, 0, 0])
         return new_state, info
@@ -325,8 +326,7 @@ class Environment(gym.Env):
         `destroy_actors_all` method.
         '''
         for sensor in self.sensors_env: sensor.destroy()
-        # for sensor in self.sensors: sensor.destroy()
-
+        for sensor in self.sensors: sensor.destroy()
         CarlaDataProvider.get_world().tick()
 
     def destroy_actors_all(self):
