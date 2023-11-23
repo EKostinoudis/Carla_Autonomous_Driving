@@ -226,7 +226,7 @@ class WorldHandler():
 
     def close(self):
         self.clean()
-        self.asynchronous()
+        # self.asynchronous()
 
     def clean(self):
         if self.scenario_runner is not None:
