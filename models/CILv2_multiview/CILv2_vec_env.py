@@ -64,9 +64,11 @@ def connect_to_port(port, timeout=5):
 
 
 class EnvWrapper():
-    def __init__(self, conn, process: Process):
+    def __init__(self, conn, process: Process, observation_space, actions_space):
         self.conn = conn
         self.process = process
+        self.observation_space = observation_space
+        self.action_space = actions_space
 
     def reset(self, *, seed=None, options=None):
         self.conn.send((EnvCommand.reset, {'seed': seed, 'options': option}))
@@ -110,11 +112,13 @@ class CILv2_vec_env(VectorEnv):
         # connect to the processes
         self.connections = [connect_to_port(port) for port in ports]
 
-        # Create the fake envs
-        self.envs = [EnvWrapper(conn, p) for conn, p in zip(self.connections, self.proceses)]
-
         # get the observation and action spaces
         msg = [conn.recv() for conn in self.connections]
+
+        # Create the fake envs
+        self.envs = [EnvWrapper(conn, p, msg[0][0], msg[0][1]) \
+            for conn, p in zip(self.connections, self.proceses)]
+
         super().__init__(
             observation_space=msg[0][0],
             action_space=msg[0][1],
