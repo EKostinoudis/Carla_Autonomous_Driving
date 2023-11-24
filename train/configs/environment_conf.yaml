@@ -21,6 +21,7 @@ reward_max_speed: 30.0
 # for the carla server
 ip: localhost
 port: 2000
+worker_threads: 2 # for the Client class https://carla.readthedocs.io/en/0.9.15/python_api/#carlaclient
 tm_port: 8000
 timeout: 30.0
 fixed_delta_seconds: 0.1

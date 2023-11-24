@@ -45,7 +45,7 @@ class WorldHandler():
         self.run_type = config.get('run_type', None)
         logger.debug(f'Init: Run type: {self.run_type}')
 
-        self.client = carla.Client(self.ip, self.port)
+        self.client = carla.Client(self.ip, self.port, config.get('worker_threads', 0))
         self.client.set_timeout(self.timeout) # secs
         client_version = self.client.get_client_version()
         server_version = self.client.get_server_version()

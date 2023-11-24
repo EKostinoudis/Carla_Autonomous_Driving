@@ -1,6 +1,9 @@
 # model name: CIL_multiview_rllib or CIL_multiview_rllib_stack
 model: CIL_multiview_rllib
 
+# use CILv2_vec_env instead of CILv2_env
+use_vec_env: false
+
 # file to a checkpoint from which we start the training
 checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
 

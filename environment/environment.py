@@ -39,6 +39,8 @@ class Environment(gym.Env):
         seed = config.get('seed', 0)
         self.set_seed(seed)
 
+        self.debug = config.get('debug', False)
+
         # display camera movement (mainly for debug)
         self.render_rgb_camera_flag = config.get('render_rgb_camera', False)
         
@@ -79,9 +81,6 @@ class Environment(gym.Env):
 
         # TODO: maybe specify the reward_range
         # self.reward_range = (min reward, max reward)
-
-        # self.destroy_actors_all()
-        logger.debug('Environment created')
 
     def reset(self, seed=None, options=None):
         self.prev_steer = 0. # previoius steer value
@@ -149,14 +148,14 @@ class Environment(gym.Env):
         else:
             self.stopped_count = 0
 
-        # NOTE: for debug, remove later???
-        if not self.episode_alive:
-            logger.debug(f'End episode. Task failed: {self.task_failed}')
-        logger.debug(f'collision_detector: {self.collision_detector.data}')
-        logger.debug(f'Out of road: {self.out_of_road}')
-        logger.debug(f'stopped count: {self.stopped_count}')
-        logger.debug(f'Velocity: {self.get_velocity():6.02f} '
-                     f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
+        if self.debug:
+            if not self.episode_alive:
+                logger.debug(f'End episode. Task failed: {self.task_failed}')
+            logger.debug(f'collision_detector: {self.collision_detector.data}')
+            logger.debug(f'Out of road: {self.out_of_road}')
+            logger.debug(f'stopped count: {self.stopped_count}')
+            logger.debug(f'Velocity: {self.get_velocity():6.02f} '
+                         f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
 
         # calculate the reward
         reward = self.get_reward()

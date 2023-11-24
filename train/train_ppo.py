@@ -14,6 +14,7 @@ from train.utils import get_config_path, update_to_abspath
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
+from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
 
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
 from ray.rllib.utils.typing import TensorType
@@ -42,16 +43,6 @@ def main(args):
     update_to_abspath(conf, conf_path_fields)
     update_to_abspath(env_conf, env_conf_path_fields)
 
-    path_to_conf = conf.path_to_conf
-    tune.register_env(
-        'CILv2_env',
-        lambda rllib_conf: CILv2_env(env_conf, path_to_conf, rllib_conf),
-    )
-
-    model_name: str = conf.model
-    if model_name not in VALID_MODELS:
-        raise ValueError(f'model: {model_name} is not a valid model. Valid models: {VALID_MODELS}')
-
     checkpoint_file = conf.checkpoint_file
 
     # set the pretrained file to the checkpoint plus the "_value_pretrained"
@@ -71,15 +62,38 @@ def main(args):
 
     extra_params = conf.extra_params
 
+    path_to_conf = conf.path_to_conf
+
+    model_name: str = conf.model
+    if model_name not in VALID_MODELS:
+        raise ValueError(f'model: {model_name} is not a valid model. Valid models: {VALID_MODELS}')
+
+    env_name = 'CILv2_env'
+    if conf.get('use_vec_env', False):
+        env_name = 'CILv2_vec_env'
+        env_conf.update({'environments': num_workers})
+        num_workers = 1
+
+    tune.register_env(
+        'CILv2_env',
+        lambda rllib_conf: CILv2_env(env_conf, path_to_conf, rllib_conf),
+    )
+    tune.register_env(
+        'CILv2_vec_env',
+        lambda rllib_conf: CILv2_vec_env(env_conf, path_to_conf, rllib_conf),
+    )
+
     # update g_conf
     merge_with_yaml(os.path.join(os.path.dirname(path_to_conf), 'CILv2.yaml'))
 
+    '''
     num_cpus = conf.get('num_cpus', None)
     num_gpus = conf.get('num_gpus', None)
 
     # specify the number of cpus because on a SLURM env it crashes
     if num_cpus is None:
         num_cpus = num_workers + 1
+    '''
 
     # ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
     ray.init()
@@ -87,7 +101,7 @@ def main(args):
     if pretrain_value:
         config = (
             PPOConfig()
-            .environment('CILv2_env')
+            .environment(env_name)
             .framework('torch')
             .training(
                 model={ 
@@ -134,7 +148,7 @@ def main(args):
 
     config = (
         PPOConfig()
-        .environment('CILv2_env')
+        .environment(env_name)
         .framework('torch')
         .training(model={ 
             "custom_model": model_name,
