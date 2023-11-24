@@ -71,7 +71,7 @@ class EnvWrapper():
         self.action_space = actions_space
 
     def reset(self, *, seed=None, options=None):
-        self.conn.send((EnvCommand.reset, {'seed': seed, 'options': option}))
+        self.conn.send((EnvCommand.reset, {'seed': seed, 'options': options}))
         return self.conn.recv()
 
     def step(self, action):
@@ -137,7 +137,7 @@ class CILv2_vec_env(VectorEnv):
         return obs, info
 
     def reset_at(self, index, *, seed=None, options=None):
-        return self.envs[index].reset(seed, options)
+        return self.envs[index].reset(seed=seed, options=options)
 
     def vector_step(self, actions):
         for conn, action in zip(self.connections, actions):
