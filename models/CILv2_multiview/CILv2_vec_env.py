@@ -19,6 +19,7 @@ class EnvCommand(Enum):
     step = 2
     close = 3
 
+
 def handle_env(env_config: DictConfig | dict, path_to_conf_file: str):
     port = env_config.get('port', 2000) + 3
 
@@ -41,10 +42,12 @@ def handle_env(env_config: DictConfig | dict, path_to_conf_file: str):
             conn.send(ret)
         elif commmand == EnvCommand.close:
             env.close()
+            conn.send(True)
             conn.close()
             break
 
     listener.close()
+
 
 def connect_to_port(port, timeout=5):
     start = time.perf_counter()
@@ -60,6 +63,28 @@ def connect_to_port(port, timeout=5):
                 Exception(f"Timeout ({timeout}) for port: {port}")
 
 
+class EnvWrapper():
+    def __init__(self, conn, process: Process):
+        self.conn = conn
+        self.process = process
+
+    def reset(self, *, seed=None, options=None):
+        self.conn.send((EnvCommand.reset, {'seed': seed, 'options': option}))
+        return self.conn.recv()
+
+    def step(self, action):
+        self.conn.send((EnvCommand.step, action))
+        return self.conn.recv()
+
+    def close(self):
+        self.conn.send((EnvCommand.close, None))
+        self.conn.recv()
+        self.conn.close()
+
+        # wait for process to end before closing
+        self.process.join()
+        self.process.close()
+
 class CILv2_vec_env(VectorEnv):
     def __init__(self,
                  env_config: DictConfig | dict,
@@ -68,7 +93,6 @@ class CILv2_vec_env(VectorEnv):
                  ):
         num_envs = env_config.get('environments', 1)
 
-        # self.envs = []
         self.proceses = []
         ports = []
         for offset in range(num_envs):
@@ -85,6 +109,9 @@ class CILv2_vec_env(VectorEnv):
 
         # connect to the processes
         self.connections = [connect_to_port(port) for port in ports]
+
+        # Create the fake envs
+        self.envs = [EnvWrapper(conn, p) for conn, p in zip(self.connections, self.proceses)]
 
         # get the observation and action spaces
         msg = [conn.recv() for conn in self.connections]
@@ -106,8 +133,7 @@ class CILv2_vec_env(VectorEnv):
         return obs, info
 
     def reset_at(self, index, *, seed=None, options=None):
-        self.connections[index].send((EnvCommand.reset, {'seed': seed, 'options': options}))
-        return self.connections[index].recv()
+        return self.envs[index].reset(seed, options)
 
     def vector_step(self, actions):
         for conn, action in zip(self.connections, actions):
@@ -120,5 +146,5 @@ class CILv2_vec_env(VectorEnv):
         return obs_batch, rew_batch, terminated_batch, truncated_batch, info_batch
 
     def get_sub_environments(self):
-        return None
+        return self.envs
 
