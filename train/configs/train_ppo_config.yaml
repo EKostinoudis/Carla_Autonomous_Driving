@@ -2,7 +2,7 @@
 model: CIL_multiview_rllib
 
 # use CILv2_vec_env instead of CILv2_env
-use_vec_env: false
+use_vec_env: true
 
 # file to a checkpoint from which we start the training
 checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
@@ -10,48 +10,62 @@ checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor
 # path the the models config file
 path_to_conf: ./models/CILv2_multiview/_results/Ours/Town12346_5/config40.json
 
-# numbe of cpus and gpus passed to ray init
-# num_cpus must be at least num_workers + 1 (if null we use this value)
-# num_gpus must be bigger than the given gpus
-# these values can also be null (None in Python) so the default value will be used
-num_cpus: null
-num_gpus: null
-
 # for the value function (critic) pretraining
 pretrain_value: true # enables pretraining
 pretrain_iters: 2
+pretrain_complete_episodes: true # use batch_mode: complete_episodes for the pretraining
 
-train_iters: 2
-num_workers: 2 # number of parallel environments
-training_gpus: 1 # number of gpus for the training (updating the weights)
-worker_gpus: 0.0 # number of gpus for the sampling (collecting the observations)
-checkpoint_freq: 5 # frequency for the checkpoints
+train_iters: 1000
+num_workers: 8 # number of parallel environments
+training_gpus: 3 # number of gpus for the training (updating the weights)
+worker_gpus: 0.5 # number of gpus for the sampling (collecting the observations)
+
+# for DDP type training
+num_learner_workers: 0
+num_cpus_per_learner_worker: 0
+num_gpus_per_learner_worker: 0
+
+checkpoint_freq: 20 # frequency for the checkpoints
 
 # extra parameters for the PPOConfig
 extra_params:
   lr: 5.0e-05
-  train_batch_size: 4000
-  sgd_minibatch_size: 128
+  train_batch_size: 2000
+  sgd_minibatch_size: 64
   num_sgd_iter: 30
 
   gamma: 0.99
-  clip_param: 0.3
+  clip_param: 0.2
 
   vf_clip_param: 10.0
   vf_loss_coeff: 1.0
 
   use_gae: true
-  lambda_: 1.0
+  lambda_: 0.95
 
   use_kl_loss: true
   kl_coeff: 0.2
   kl_target: 0.01
 
   shuffle_sequences: true
-  entropy_coeff: 0.0
+  entropy_coeff: 0.01
   entropy_coeff_schedule: null
 
+  # _disable_preprocessor_api: true # in older version uses numpy array if used???
+  recreate_failed_workers: false # default false
+  restart_failed_sub_environments: false # default false
+  torch_compile_learner: true # default false
+  torch_compile_worker: true # default false
 
-  explore: true
-  exploration_config:
-    type: StochasticSampling
+  worker_restore_timeout_s: 1800.0 # 180.0
+  worker_health_probe_timeout_s: 600 # 60
+  sync_filters_on_rollout_workers_timeout_s: 600.0 # 60.0
+  metrics_episode_collection_timeout_s: 600.0 60.0
+  evaluation_sample_timeout_s: 1800.0 # 180.0
+
+  # causes an error, do NOT set to true
+  # _disable_initialize_loss_from_dummy_batch: false # default false
+
+  # explore: true
+  # exploration_config:
+  #   type: StochasticSampling

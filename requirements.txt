@@ -9,6 +9,7 @@ torchvision
 tensorboard
 ray[data,train,tune,serve,rllib]==2.7.1
 accelerate
+GPUtil
 
 omegaconf
 tqdm

@@ -60,6 +60,10 @@ def main(args):
     worker_gpus = conf.worker_gpus
     checkpoint_freq = conf.checkpoint_freq
 
+    num_learner_workers = conf.get('num_learner_workers', 0)
+    num_cpus_per_learner_worker = conf.get('num_cpus_per_learner_worker', 0)
+    num_gpus_per_learner_worker = conf.get('num_gpus_per_learner_worker', 0)
+
     extra_params = conf.extra_params
 
     path_to_conf = conf.path_to_conf
@@ -86,16 +90,6 @@ def main(args):
     # update g_conf
     merge_with_yaml(os.path.join(os.path.dirname(path_to_conf), 'CILv2.yaml'))
 
-    '''
-    num_cpus = conf.get('num_cpus', None)
-    num_gpus = conf.get('num_gpus', None)
-
-    # specify the number of cpus because on a SLURM env it crashes
-    if num_cpus is None:
-        num_cpus = num_workers + 1
-    '''
-
-    # ray.init(num_cpus=num_cpus, num_gpus=num_gpus)
     ray.init()
 
     if pretrain_value:
@@ -118,6 +112,9 @@ def main(args):
             .resources(
                 num_gpus=training_gpus,
                 num_gpus_per_worker=worker_gpus,
+                num_learner_workers=num_learner_workers,
+                num_cpus_per_learner_worker=num_cpus_per_learner_worker,
+                num_gpus_per_learner_worker=num_gpus_per_learner_worker,
             )
             .rl_module(_enable_rl_module_api=False)
             .training(_enable_learner_api=False)

@@ -228,6 +228,9 @@ class WorldHandler():
         self.clean()
         # self.asynchronous()
 
+        # load a small map
+        self.client.load_world('Town01_Opt')
+
     def clean(self):
         if self.scenario_runner is not None:
             self.scenario_runner.clean()
