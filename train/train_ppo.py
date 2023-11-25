@@ -48,7 +48,8 @@ def main(args):
     # set the pretrained file to the checkpoint plus the "_value_pretrained"
     # string in the end (before the extension)
     base, ext = os.path.splitext(checkpoint_file)
-    pretrained_file = base + '_value_pretrained' + ext
+    pretrain_file = base + '_value_pretrained' + ext
+    pretrain_complete_episodes = conf.get('pretrain_complete_episodes', False)
 
     # for pretraining the value function
     pretrain_value = conf.pretrain_value
@@ -138,10 +139,10 @@ def main(args):
             'default_policy',
         )
         model = Policy.from_checkpoint(checkpoint).model
-        torch.save({'model': model.state_dict()}, pretrained_file)
+        torch.save({'model': model.state_dict()}, pretrain_file)
 
         # update the checkpoint file
-        checkpoint_file = pretrained_file
+        checkpoint_file = pretrain_file
 
     config = (
         PPOConfig()
@@ -165,6 +166,8 @@ def main(args):
         .training(_enable_learner_api=False)
     )
     config.update_from_dict(extra_params)
+    if pretrain_complete_episodes:
+        config.update_from_dict({'batch_mode': 'complete_episodes'})
 
     results = tune.run(
         'PPO',
