@@ -161,6 +161,9 @@ def main(args):
         .resources(
             num_gpus=training_gpus,
             num_gpus_per_worker=worker_gpus,
+            num_learner_workers=num_learner_workers,
+            num_cpus_per_learner_worker=num_cpus_per_learner_worker,
+            num_gpus_per_learner_worker=num_gpus_per_learner_worker,
         )
         .rl_module(_enable_rl_module_api=False)
         .training(_enable_learner_api=False)
