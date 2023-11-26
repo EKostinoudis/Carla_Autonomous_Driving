@@ -121,6 +121,8 @@ def main(args):
             .training(_enable_learner_api=False)
         )
         config.update_from_dict(extra_params)
+        if pretrain_complete_episodes:
+            config.update_from_dict({'batch_mode': 'complete_episodes'})
 
         results = tune.run(
             'PPO',
@@ -169,8 +171,6 @@ def main(args):
         .training(_enable_learner_api=False)
     )
     config.update_from_dict(extra_params)
-    if pretrain_complete_episodes:
-        config.update_from_dict({'batch_mode': 'complete_episodes'})
 
     results = tune.run(
         'PPO',
