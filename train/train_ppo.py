@@ -61,6 +61,8 @@ def main(args):
     worker_gpus = conf.worker_gpus
     checkpoint_freq = conf.checkpoint_freq
 
+    # these are useless because we have set:
+    # _enable_rl_module_api=False and _enable_learner_api=False
     num_learner_workers = conf.get('num_learner_workers', 0)
     num_cpus_per_learner_worker = conf.get('num_cpus_per_learner_worker', 0)
     num_gpus_per_learner_worker = conf.get('num_gpus_per_learner_worker', 0)
@@ -77,7 +79,12 @@ def main(args):
     if conf.get('use_vec_env', False):
         env_name = 'CILv2_vec_env'
         env_conf.update({'environments': num_workers})
-        num_workers = 1
+
+        if conf.get('no_rollout_workers', False):
+            # use same process for sampling and traing
+            num_workers = 0
+        else:
+            num_workers = 1
 
     tune.register_env(
         'CILv2_env',

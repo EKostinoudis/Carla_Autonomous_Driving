@@ -3,6 +3,7 @@ model: CIL_multiview_rllib
 
 # use CILv2_vec_env instead of CILv2_env
 use_vec_env: true
+no_rollout_workers: false # if use_vec_env is true, set num_rollout_workers=0
 
 # file to a checkpoint from which we start the training
 checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
@@ -19,11 +20,6 @@ train_iters: 1000
 num_workers: 8 # number of parallel environments
 training_gpus: 3 # number of gpus for the training (updating the weights)
 worker_gpus: 0.5 # number of gpus for the sampling (collecting the observations)
-
-# for DDP type training
-num_learner_workers: 0
-num_cpus_per_learner_worker: 0
-num_gpus_per_learner_worker: 0
 
 checkpoint_freq: 20 # frequency for the checkpoints
 
