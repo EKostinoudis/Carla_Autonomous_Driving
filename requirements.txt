@@ -7,7 +7,7 @@ pyyaml
 torch
 torchvision
 tensorboard
-ray[data,train,tune,serve,rllib]==2.7.1
+ray[data,train,tune,serve,rllib]==2.8.0
 accelerate
 GPUtil
 

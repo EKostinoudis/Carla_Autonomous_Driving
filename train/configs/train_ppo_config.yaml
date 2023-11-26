@@ -3,7 +3,7 @@ model: CIL_multiview_rllib
 
 # use CILv2_vec_env instead of CILv2_env
 use_vec_env: true
-no_rollout_workers: false # if use_vec_env is true, set num_rollout_workers=0
+no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
 
 # file to a checkpoint from which we start the training
 checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
@@ -15,19 +15,23 @@ path_to_conf: ./models/CILv2_multiview/_results/Ours/Town12346_5/config40.json
 pretrain_value: true # enables pretraining
 pretrain_iters: 2
 pretrain_complete_episodes: true # use batch_mode: complete_episodes for the pretraining
+lr_pretrain: 5.0e-05 # lr for pretraining (null or remove it to use the same as training)
 
 train_iters: 1000
 num_workers: 8 # number of parallel environments
-training_gpus: 3 # number of gpus for the training (updating the weights)
-worker_gpus: 0.5 # number of gpus for the sampling (collecting the observations)
+training_gpus: 4 # number of gpus for the training (updating the weights)
+worker_gpus: 0 # number of gpus for the sampling (collecting the observations)
 
 checkpoint_freq: 20 # frequency for the checkpoints
 
 # extra parameters for the PPOConfig
 extra_params:
-  lr: 5.0e-05
+  disable_env_checking: true
+  explore: false # default true
+
+  lr: 5.0e-06
   train_batch_size: 2000
-  sgd_minibatch_size: 64
+  sgd_minibatch_size: 128
   num_sgd_iter: 30
 
   gamma: 0.99

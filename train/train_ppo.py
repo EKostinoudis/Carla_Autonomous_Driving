@@ -131,6 +131,11 @@ def main(args):
         if pretrain_complete_episodes:
             config.update_from_dict({'batch_mode': 'complete_episodes'})
 
+        # update the learning rate if given
+        lr_pretrain = conf.get('lr_pretrain', None)
+        if lr_pretrain is not None:
+            config.update_from_dict({'lr': lr_pretrain})
+
         results = tune.run(
             'PPO',
             name='ppo_train/value_pretrain',
