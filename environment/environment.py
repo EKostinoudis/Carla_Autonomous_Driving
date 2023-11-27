@@ -39,6 +39,7 @@ class Environment(gym.Env):
         seed = config.get('seed', 0)
         self.set_seed(seed)
 
+        self.return_reward_info = config.get('return_reward_info', False)
         self.debug = config.get('debug', False)
 
         # display camera movement (mainly for debug)
@@ -165,8 +166,13 @@ class Environment(gym.Env):
 
         new_state = self.get_state()
 
+        if self.return_reward_info:
+            info = self.create_info_for_logging()
+        else:
+            info = {}
+
         # returns (next state, reward, terminated, truncated, info)
-        return new_state, reward, terminated, truncated, {}
+        return new_state, reward, terminated, truncated, info
 
     def render(self): pass # currently empty
 
@@ -185,32 +191,40 @@ class Environment(gym.Env):
         self.vehicle.apply_control(self.vehicle_control)
 
     def get_reward(self) -> float:
-        reward = 0.
+        self.episode_end_reward = 0
+        self.sign_run_reward = 0
+        self.not_moving_reward = 0
+        self.out_of_road_reward = 0
+        self.steering_reward = 0
+        self.speeding_reward = 0
 
         # end of scenario reward
         if not self.episode_alive:
             if self.task_failed:
-                return self.reward_failure
+                self.episode_end_reward = self.reward_failure
             else:
-                return self.reward_success
+                self.episode_end_reward = self.reward_success
+            return self.episode_end_reward
 
         # stop and red light tests
         for test in self.tests[:2]:
             # print(test.name, test.test_status)
             if test.test_status == 'FAILURE':
                 test.test_status = 'RESET'
-                return self.reward_failure
+                self.sign_run_reward = self.reward_failure
+                return self.sign_run_reward
 
         # vehicle too long stopped
         if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
-            return self.reward_failure
+            self.not_moving_reward = self.reward_failure
+            return self.not_moving_reward
 
         # out of road
         if self.out_of_road:
-            reward += self.reward_wrong_lane
+            self.steering_reward = self.reward_wrong_lane
 
         # steering reward (based on steer diff)
-        reward += self.reward_steer * (self.prev_steer - self.vehicle_control.steer)
+        self.steering_reward = self.reward_steer * (self.prev_steer - self.vehicle_control.steer)
         # hold the previous steer value here, cause we only use it here
         self.prev_steer = self.vehicle_control.steer
 
@@ -218,11 +232,24 @@ class Environment(gym.Env):
         # else (above the speed limit), give penalty
         speed = self.get_velocity()
         if speed <= self.reward_max_speed:
-            reward += self.reward_speed * (speed / self.reward_max_speed)
+            self.speeding_reward = self.reward_speed * (speed / self.reward_max_speed)
         else:
-            reward += -self.reward_speed
+            self.speeding_reward = -self.reward_speed
 
-        return reward
+        return self.not_moving_reward + \
+               self.out_of_road_reward + \
+               self.steering_reward + \
+               self.speeding_reward
+
+    def create_info_for_logging(self):
+        return {
+            'episode_end_reward': self.episode_end_reward,
+            'sign_run_reward': self.sign_run_reward,
+            'not_moving_reward': self.not_moving_reward,
+            'out_of_road_reward': self.out_of_road_reward,
+            'steering_reward': self.steering_reward,
+            'speeding_reward': self.speeding_reward,
+        }
 
     def get_state(self):
         return self.sensor_interface.get_data()

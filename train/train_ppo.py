@@ -10,6 +10,7 @@ from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
 from train.utils import get_config_path, update_to_abspath
+from train.callback import LogRewardsCallback
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
@@ -126,6 +127,7 @@ def main(args):
             )
             .rl_module(_enable_rl_module_api=False)
             .training(_enable_learner_api=False)
+            .callbacks(LogRewardsCallback)
         )
         config.update_from_dict(extra_params)
         if pretrain_complete_episodes:
@@ -181,6 +183,7 @@ def main(args):
         )
         .rl_module(_enable_rl_module_api=False)
         .training(_enable_learner_api=False)
+        .callbacks(LogRewardsCallback)
     )
     config.update_from_dict(extra_params)
 

@@ -5,6 +5,9 @@ render_rgb_camera: false
 # terminate the episode if the vehicle runs a red light or a stop
 termination_on_run: true
 
+# return the reward value in the info
+return_reward_info: true
+
 # terminate the episode if the vehicle doesn't move for the given time
 stopped_termination_seconds: 90
 
