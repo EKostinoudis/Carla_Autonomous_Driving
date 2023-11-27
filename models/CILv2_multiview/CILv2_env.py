@@ -50,6 +50,8 @@ class CILv2_env(gym.Env):
         if not isinstance(env_config, DictConfig):
             env_config = OmegaConf.create(dict(env_config))
 
+        self.return_reward_info = env_config.get('return_reward_info', False)
+
         #  current global plans to reach a destination
         self._global_plan = None
         self._global_plan_world_coord = None
@@ -128,7 +130,13 @@ class CILv2_env(gym.Env):
         self.input_data = state
         state = self.run_step()
 
-        reward += self.additional_reward()
+        wrong_lane_reward = self.additional_reward()
+
+        reward += wrong_lane_reward
+
+
+        if self.return_reward_info:
+            info['wrong_lane_reward'] = wrong_lane_reward
 
         return state, reward, terminated, truncated, info
 

@@ -8,7 +8,7 @@ from ray.rllib.policy import Policy
 from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 
-class LogRewardsCallback(DefaultCallbacks):
+class LogInfoCallback(DefaultCallbacks):
     '''
     Log every variable in the info dict.
     NOTE: the info dict must have only scalars, else this will crash.

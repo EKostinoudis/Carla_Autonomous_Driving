@@ -117,7 +117,8 @@ class Environment(gym.Env):
         CarlaDataProvider.get_world().tick()
 
         new_state, reward, terminated, truncated, info = self.step([0, 0, 0])
-        return new_state, info
+        # NOTE: we return an empy dict because we don't log at reset
+        return new_state, {}
 
     def step(self, action):
         ''' Performs one step of the simulation.
@@ -191,7 +192,8 @@ class Environment(gym.Env):
         self.vehicle.apply_control(self.vehicle_control)
 
     def get_reward(self) -> float:
-        self.episode_end_reward = 0
+        self.episode_end_success_reward = 0
+        self.episode_end_fail_reward = 0
         self.sign_run_reward = 0
         self.not_moving_reward = 0
         self.out_of_road_reward = 0
@@ -201,10 +203,11 @@ class Environment(gym.Env):
         # end of scenario reward
         if not self.episode_alive:
             if self.task_failed:
-                self.episode_end_reward = self.reward_failure
+                self.episode_end_fail_reward = self.reward_failure
+                return self.episode_end_fail_reward
             else:
-                self.episode_end_reward = self.reward_success
-            return self.episode_end_reward
+                self.episode_end_success_reward = self.reward_success
+                return self.episode_end_success_reward
 
         # stop and red light tests
         for test in self.tests[:2]:
@@ -243,12 +246,17 @@ class Environment(gym.Env):
 
     def create_info_for_logging(self):
         return {
-            'episode_end_reward': self.episode_end_reward,
+            'episode_end_success_reward': self.episode_end_success_reward,
+            'episode_end_fail_reward': self.episode_end_fail_reward,
             'sign_run_reward': self.sign_run_reward,
             'not_moving_reward': self.not_moving_reward,
             'out_of_road_reward': self.out_of_road_reward,
             'steering_reward': self.steering_reward,
             'speeding_reward': self.speeding_reward,
+            'speed': self.get_velocity(),
+            'throttle': self.vehicle_control.throttle,
+            'brake': self.vehicle_control.brake,
+            'steer': self.vehicle_control.steer,
         }
 
     def get_state(self):
