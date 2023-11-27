@@ -2,6 +2,7 @@ import os
 import torch
 import argparse
 from omegaconf import OmegaConf
+import math
 
 import ray
 from ray import tune
@@ -77,9 +78,17 @@ def main(args):
         raise ValueError(f'model: {model_name} is not a valid model. Valid models: {VALID_MODELS}')
 
     env_name = 'CILv2_env'
+    rollout_fragment_length = 'auto'
     if conf.get('use_vec_env', False):
         env_name = 'CILv2_vec_env'
         env_conf.update({'environments': num_workers})
+        batch_size = conf.get('extra_params', {}).get('train_batch_size', None)
+        if batch_size is None:
+            raise Exception(
+                'Set the number of "train_batch_size" in the "extra_params"'
+                'in order to calculate the roolout fragment length.'
+            )
+        rollout_fragment_length = math.ceil(batch_size / num_workers)
 
         if conf.get('no_rollout_workers', False):
             # use same process for sampling and traing
@@ -117,7 +126,10 @@ def main(args):
                     },
                 },
             )
-            .rollouts(num_rollout_workers=num_workers)
+            .rollouts(
+                num_rollout_workers=num_workers,
+                rollout_fragment_length=rollout_fragment_length,
+            )
             .resources(
                 num_gpus=training_gpus,
                 num_gpus_per_worker=worker_gpus,
@@ -173,7 +185,10 @@ def main(args):
                 'pretrain_value': False,
             },
         })
-        .rollouts(num_rollout_workers=num_workers)
+        .rollouts(
+            num_rollout_workers=num_workers,
+            rollout_fragment_length=rollout_fragment_length,
+        )
         .resources(
             num_gpus=training_gpus,
             num_gpus_per_worker=worker_gpus,
