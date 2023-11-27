@@ -1,10 +1,10 @@
 from collections import defaultdict
 from typing import Dict
+import numpy as np
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env import BaseEnv
 from ray.rllib.policy import Policy
-from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 
