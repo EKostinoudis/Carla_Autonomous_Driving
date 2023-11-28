@@ -227,7 +227,7 @@ class Environment(gym.Env):
             self.steering_reward = self.reward_wrong_lane
 
         # steering reward (based on steer diff)
-        self.steering_reward = self.reward_steer * (self.prev_steer - self.vehicle_control.steer)
+        self.steering_reward = self.reward_steer * abs(self.prev_steer - self.vehicle_control.steer)
         # hold the previous steer value here, cause we only use it here
         self.prev_steer = self.vehicle_control.steer
 
