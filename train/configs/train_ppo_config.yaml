@@ -21,6 +21,7 @@ train_iters: 1000
 
 # for sampling
 num_workers: 8 # number of parallel environments
+num_cpus_per_worker: 1
 worker_gpus: 0 # number of gpus for the sampling (collecting the observations)
 
 training_gpus: 4 # number of gpus for the training (updating the weights)

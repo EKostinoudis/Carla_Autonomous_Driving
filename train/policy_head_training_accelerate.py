@@ -66,6 +66,7 @@ def main(args):
     val_dataset_names = conf.val_dataset_names
     batch_size = conf.batch_size
     num_workers = conf.num_workers
+    train_whole_network = args.all_weights
 
     datetime_str = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
@@ -108,23 +109,26 @@ def main(args):
     # load state dict
     model.load_state_dict(checkpoint_model, strict=False)
 
-    model.eval()
-    if MODEL_NAME == 'CIL_multiview_actor_critic':
-        model.action_output.train()
-    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-        model.action_output2.train()
+    if train_whole_network:
+        model.train()
+    else:
+        model.eval()
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            model.action_output.train()
+        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+            model.action_output2.train()
 
-    # freeze weights
-    for param in model.parameters():
-        param.requires_grad = False
+        # freeze weights
+        for param in model.parameters():
+            param.requires_grad = False
 
-    # unfreeze the last layer
-    if MODEL_NAME == 'CIL_multiview_actor_critic':
-        for param in model.action_output.parameters():
-            param.requires_grad = True
-    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-        for param in model.action_output2.parameters():
-            param.requires_grad = True
+        # unfreeze the last layer
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            for param in model.action_output.parameters():
+                param.requires_grad = True
+        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+            for param in model.action_output2.parameters():
+                param.requires_grad = True
 
     train_loader, val_loader = make_data_loader2(
         "transfer",
@@ -137,10 +141,13 @@ def main(args):
 
     model.to(device)
 
-    if MODEL_NAME == 'CIL_multiview_actor_critic':
-        params = model.action_output.parameters()
-    elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-        params = model.action_output2.parameters()
+    if train_whole_network:
+        params = model.parameters()
+    else:
+        if MODEL_NAME == 'CIL_multiview_actor_critic':
+            params = model.action_output.parameters()
+        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+            params = model.action_output2.parameters()
 
     criterion = torch.nn.MSELoss() if conf.loss != 'l1' else torch.nn.L1Loss()
     optimizer = torch.optim.AdamW(params, lr=LEARNING_RATE)
@@ -163,10 +170,13 @@ def main(args):
         #####################################################
         # Training
         #####################################################
-        if MODEL_NAME == 'CIL_multiview_actor_critic':
-            model.module.action_output.train()
-        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-            model.module.action_output2.train()
+        if train_whole_network:
+            model.module.train()
+        else:
+            if MODEL_NAME == 'CIL_multiview_actor_critic':
+                model.module.action_output.train()
+            elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+                model.module.action_output2.train()
 
         # log the learning rate
         accelerator.log({"Learning rate": get_lr(optimizer)}, step=epoch)
@@ -216,10 +226,13 @@ def main(args):
         #####################################################
         # Validation
         #####################################################
-        if MODEL_NAME == 'CIL_multiview_actor_critic':
-            model.module.action_output.eval()
-        elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
-            model.module.action_output2.eval()
+        if train_whole_network:
+            model.module.eval()
+        else:
+            if MODEL_NAME == 'CIL_multiview_actor_critic':
+                model.module.action_output.eval()
+            elif MODEL_NAME == 'CIL_multiview_actor_critic_stack':
+                model.module.action_output2.eval()
 
         loss_list = []
         steer_loss_list = []
@@ -301,6 +314,10 @@ if __name__ == "__main__":
     parser.add_argument('--save-best',
                         action="store_true",
                         help='Use one file to save all the models',
+                        )
+    parser.add_argument('--all-weights',
+                        action="store_true",
+                        help='Train the whole network (all the weights)',
                         )
     args = parser.parse_args()
 
