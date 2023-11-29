@@ -11,6 +11,9 @@ from omegaconf import DictConfig, OmegaConf
 from ray.rllib.env.env_context import EnvContext
 from typing import Optional
 import random
+from PIL import Image
+import torch
+import torchvision.transforms.functional as TF
 
 from environment.sensor_interface import SensorInterface
 from srunner.tools.route_manipulation import downsample_route
@@ -141,6 +144,33 @@ class CILv2_env(gym.Env):
         return state, reward, terminated, truncated, info
 
     def run_step(self):
+        self.norm_rgb = torch.tensor(
+            [self.process_image(self.input_data[camera_type][1]) \
+                for camera_type in g_conf.DATA_USED],
+            dtype=torch.float32,
+        ).unsqueeze(0)
+        self.norm_speed = torch.tensor(
+            [self.process_speed(self.input_data['SPEED'][1]['speed'])],
+            dtype=torch.float32,
+        ).unsqueeze(0)
+        if g_conf.DATA_COMMAND_ONE_HOT:
+            self.direction = torch.tensor(
+                self.process_command(self.input_data['GPS'][1],
+                                     self.input_data['IMU'][1],
+                                     )[0]
+            ).unsqueeze(0)
+        else:
+            self.direction = torch.tensor(
+                [self.process_command(
+                    self.input_data['GPS'][1],
+                    self.input_data['IMU'][1],
+                )[1]-1])
+            .unsqueeze(0)
+
+        return self.norm_rgb, self.direction, self.norm_speed
+
+    '''
+    def run_step_numpy(self):
         self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]) for camera_type in g_conf.DATA_USED]]
         self.norm_speed = [np.float32([self.process_speed(self.input_data['SPEED'][1]['speed'])])]
         if g_conf.DATA_COMMAND_ONE_HOT:
@@ -156,6 +186,7 @@ class CILv2_env(gym.Env):
         self.norm_speed = np.asarray(self.norm_speed, dtype=np.float32)
 
         return self.norm_rgb, self.direction, self.norm_speed
+    '''
 
     def close(self):
         self.norm_rgb = None
@@ -209,12 +240,23 @@ class CILv2_env(gym.Env):
 
         return 0.
 
-    def process_image(self, image):
+    '''
+    def process_image_numpy(self, image):
         image = image[:,:,:3][:, :, ::-1] / 255.
         # to numpy array and normilize
         image = np.asarray(image, dtype=np.float32)
         image = (image - g_conf.IMG_NORMALIZATION['mean']) / g_conf.IMG_NORMALIZATION['std']
         image = image.transpose((2, 0 , 1))
+        return image
+    '''
+
+    def process_image(self, image):
+        image = Image.fromarray(image[:,:,:3][:, :, ::-1])
+        image = image.resize((g_conf.IMAGE_SHAPE[2], g_conf.IMAGE_SHAPE[1])).convert('RGB')
+        image = TF.to_tensor(image)
+
+        # Normalization is really necessary if you want to use any pretrained weights.
+        image = TF.normalize(image, mean=g_conf.IMG_NORMALIZATION['mean'], std=g_conf.IMG_NORMALIZATION['std'])
         return image
 
     def process_speed(self, speed):
