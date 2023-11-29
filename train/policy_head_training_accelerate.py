@@ -111,6 +111,9 @@ def main(args):
 
     if train_whole_network:
         model.train()
+        model.value_output.eval()
+        for param in model.value_output.parameters():
+            param.requires_grad = False
     else:
         model.eval()
         if MODEL_NAME == 'CIL_multiview_actor_critic':
@@ -130,6 +133,7 @@ def main(args):
             for param in model.action_output2.parameters():
                 param.requires_grad = True
 
+    accelerator.print(f'Loading the dataloader')
     train_loader, val_loader = make_data_loader2(
         "transfer",
         data_path,
@@ -138,6 +142,7 @@ def main(args):
         val_dataset_names,
         num_workers=num_workers,
     )
+    accelerator.print(f'dataloader loaded')
 
     model.to(device)
 
