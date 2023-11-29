@@ -18,9 +18,17 @@ pretrain_complete_episodes: true # use batch_mode: complete_episodes for the pre
 lr_pretrain: 5.0e-05 # lr for pretraining (null or remove it to use the same as training)
 
 train_iters: 1000
+
+# for sampling
 num_workers: 8 # number of parallel environments
-training_gpus: 4 # number of gpus for the training (updating the weights)
 worker_gpus: 0 # number of gpus for the sampling (collecting the observations)
+
+training_gpus: 4 # number of gpus for the training (updating the weights)
+
+# for training
+num_learner_workers: 0
+num_cpus_per_learner_worker: 1
+num_gpus_per_learner_worker: 0
 
 checkpoint_freq: 20 # frequency for the checkpoints
 
@@ -54,8 +62,13 @@ extra_params:
   # _disable_preprocessor_api: true # in older version uses numpy array if used???
   recreate_failed_workers: false # default false
   restart_failed_sub_environments: false # default false
+
   torch_compile_learner: true # default false
+  torch_compile_learner_dynamo_backend: ipex # inductor
+  torch_compile_learner_dynamo_mode: max-autotune
+
   torch_compile_worker: true # default false
+  torch_compile_worker_dynamo_backend: inductor
 
   worker_restore_timeout_s: 1800.0 # 180.0
   worker_health_probe_timeout_s: 600 # 60

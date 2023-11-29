@@ -62,11 +62,12 @@ def main(args):
     training_gpus = conf.training_gpus
     worker_gpus = conf.worker_gpus
     checkpoint_freq = conf.checkpoint_freq
+    num_cpus_per_worker = conf.get('num_cpus_per_worker', 1)
 
     # these are useless because we have set:
     # _enable_rl_module_api=False and _enable_learner_api=False
     num_learner_workers = conf.get('num_learner_workers', 0)
-    num_cpus_per_learner_worker = conf.get('num_cpus_per_learner_worker', 0)
+    num_cpus_per_learner_worker = conf.get('num_cpus_per_learner_worker', 1)
     num_gpus_per_learner_worker = conf.get('num_gpus_per_learner_worker', 0)
 
     extra_params = conf.extra_params
@@ -132,6 +133,7 @@ def main(args):
             )
             .resources(
                 num_gpus=training_gpus,
+                num_cpus_per_worker=num_cpus_per_worker,
                 num_gpus_per_worker=worker_gpus,
                 num_learner_workers=num_learner_workers,
                 num_cpus_per_learner_worker=num_cpus_per_learner_worker,
@@ -191,6 +193,7 @@ def main(args):
         )
         .resources(
             num_gpus=training_gpus,
+            num_cpus_per_worker=num_cpus_per_worker,
             num_gpus_per_worker=worker_gpus,
             num_learner_workers=num_learner_workers,
             num_cpus_per_learner_worker=num_cpus_per_learner_worker,

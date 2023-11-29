@@ -144,10 +144,9 @@ class CILv2_env(gym.Env):
         return state, reward, terminated, truncated, info
 
     def run_step(self):
-        self.norm_rgb = torch.tensor(
+        self.norm_rgb = torch.stack(
             [self.process_image(self.input_data[camera_type][1]) \
                 for camera_type in g_conf.DATA_USED],
-            dtype=torch.float32,
         ).unsqueeze(0)
         self.norm_speed = torch.tensor(
             [self.process_speed(self.input_data['SPEED'][1]['speed'])],
@@ -157,15 +156,16 @@ class CILv2_env(gym.Env):
             self.direction = torch.tensor(
                 self.process_command(self.input_data['GPS'][1],
                                      self.input_data['IMU'][1],
-                                     )[0]
+                                     )[0],
+                dtype=torch.float32,
             ).unsqueeze(0)
         else:
             self.direction = torch.tensor(
-                [self.process_command(
-                    self.input_data['GPS'][1],
-                    self.input_data['IMU'][1],
-                )[1]-1])
-            .unsqueeze(0)
+                [self.process_command(self.input_data['GPS'][1],
+                                      self.input_data['IMU'][1],
+                                      )[1]-1],
+                dtype=torch.float32,
+            ).unsqueeze(0)
 
         return self.norm_rgb, self.direction, self.norm_speed
 
