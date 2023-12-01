@@ -2,7 +2,7 @@ import os
 import torch
 import random
 import numpy as np
-from ray.rllib.models.torch.torch_action_dist import TorchBeta
+from ray.rllib.models.torch.torch_action_dist import TorchBeta, TorchDiagGaussian
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -44,11 +44,17 @@ def extract_model_data_tensors_no_device(data, target_names, cameras):
 
     return src_images, src_directions, src_speed, target
 
-def forward_actor_critic(model, data):
-    beta_out = model.forward(*data)
-    dist = TorchBeta(beta_out, None, low=-1, high=1)
-    out = dist.sample().squeeze(1)
-    return out[:, 0], out[:, 1]
+def forward_actor_critic(model, data, use_gaussian=False):
+    if use_gaussian:
+        diag_out = model.forward(*data)
+        dist = TorchDiagGaussian(diag_out, None)
+        out = torch.clip(dist.sample().squeeze(1), -1, 1)
+        return out[:, 0], out[:, 1]
+    else:
+        beta_out = model.forward(*data)
+        dist = TorchBeta(beta_out, None, low=-1, high=1)
+        out = dist.sample().squeeze(1)
+        return out[:, 0], out[:, 1]
 
 def to_native_path(path: str) -> str:
     '''Changes the "/" character to the native path separator'''
