@@ -46,9 +46,9 @@ def extract_model_data_tensors_no_device(data, target_names, cameras):
 
 def forward_actor_critic(model, data, use_gaussian=False):
     if use_gaussian:
-        diag_out = model.forward(*data)
+        diag_out = model.forward(*data).squeeze(1)
         dist = TorchDiagGaussian(diag_out, None)
-        out = torch.clip(dist.sample().squeeze(1), -1, 1)
+        out = torch.clip(dist.dist.rsample(), -1, 1)
         return out[:, 0], out[:, 1]
     else:
         beta_out = model.forward(*data)

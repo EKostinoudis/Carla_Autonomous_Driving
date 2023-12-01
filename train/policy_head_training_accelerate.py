@@ -71,6 +71,8 @@ def main(args):
     use_gaussian = conf.get('use_gaussian', False)
 
     datetime_str = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+    if os.name == 'nt':
+        datetime_str = datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
 
     config = ProjectConfiguration(project_dir=".", logging_dir="runs")
     accelerator = Accelerator(log_with="tensorboard", project_config=config)
