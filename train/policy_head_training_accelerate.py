@@ -68,6 +68,8 @@ def main(args):
     num_workers = conf.num_workers
     train_whole_network = args.all_weights
 
+    use_gaussian = conf.get('use_gaussian', False)
+
     datetime_str = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
     config = ProjectConfiguration(project_dir=".", logging_dir="runs")
@@ -204,6 +206,7 @@ def main(args):
             steer_out, acceleration_out = forward_actor_critic(
                 model,
                 (src_images, src_directions, src_speed),
+                use_gaussian=use_gaussian,
             )
             steer, acceleration = target[:, 0], target[:, 1]
 
@@ -258,6 +261,7 @@ def main(args):
                 steer_out, acceleration_out = forward_actor_critic(
                     model,
                     (src_images, src_directions, src_speed),
+                    use_gaussian=use_gaussian,
                 )
                 steer, acceleration = target[:, 0], target[:, 1]
                 steer_loss = criterion(steer_out, steer)

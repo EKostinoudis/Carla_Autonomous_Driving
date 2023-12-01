@@ -4,6 +4,7 @@ loss: l1 # l1 for l1 loss otherwise is l2
 EPOCHS: 80
 batch_size: 750
 num_workers: 2
+use_gaussian: false
 seed: 0
 SAVE_PATH: ./models/CILv2_multiview/_results/checkpoints/
 data_path: ./models/CILv2_multiview/data/
