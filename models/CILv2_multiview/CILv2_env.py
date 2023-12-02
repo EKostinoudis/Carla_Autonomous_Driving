@@ -6,7 +6,6 @@ import numpy as np
 from omegaconf import DictConfig
 import gymnasium as gym
 import logging
-import carla
 from omegaconf import DictConfig, OmegaConf
 from ray.rllib.env.env_context import EnvContext
 from typing import Optional
@@ -16,14 +15,10 @@ import torch
 import torchvision.transforms.functional as TF
 
 from environment.sensor_interface import SensorInterface
-from srunner.tools.route_manipulation import downsample_route
 from configs import g_conf, merge_with_yaml, set_type_of_process
-from dataloaders.transforms import encode_directions_4, encode_directions_6
+from dataloaders.transforms import encode_directions_6
 
 from environment import Environment
-from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-
-from agents.navigation.local_planner import RoadOption
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +129,7 @@ class CILv2_env(gym.Env):
         ).unsqueeze(0)
 
         self.direction = torch.tensor(
-            encode_directions_6(self.env.navigation_commad),
+            encode_directions_6(self.env.navigation_commad.value),
             dtype=torch.float32,
         ).unsqueeze(0)
 
