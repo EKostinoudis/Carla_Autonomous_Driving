@@ -4,6 +4,9 @@ use_rl_module: true
 # if not using RLModule: model name: CIL_multiview_rllib or CIL_multiview_rllib_stack
 model: CIL_multiview_rllib
 
+# the distribution to use for the policy, options: gaussian, beta
+output_distribution: gaussian
+
 # use CILv2_vec_env instead of CILv2_env
 use_vec_env: true
 no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0

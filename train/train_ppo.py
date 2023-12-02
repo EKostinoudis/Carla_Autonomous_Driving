@@ -75,6 +75,8 @@ def main(args):
 
     use_rl_module = conf.get('use_rl_module', False)
 
+    output_distribution = conf.get('output_distribution', 'gaussian')
+
     extra_params = conf.extra_params
 
     path_to_conf = conf.path_to_conf
@@ -146,6 +148,7 @@ def main(args):
                     'g_conf': g_conf,
                     'checkpoint': checkpoint_file,
                     'pretrain_value': pretrain_value,
+                    'output_distribution': output_distribution,
                 },
             }
 
@@ -233,6 +236,7 @@ def main(args):
                 'g_conf': g_conf,
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
+                'output_distribution': output_distribution,
             },
         }
 
