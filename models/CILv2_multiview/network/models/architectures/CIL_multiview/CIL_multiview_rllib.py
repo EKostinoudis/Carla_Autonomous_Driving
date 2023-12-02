@@ -280,3 +280,26 @@ class CIL_multiview_rllib_stack(TorchModelV2, CIL_multiview_actor_critic_stack):
 
     def value_function(self):
         return self._value_out.view(-1)
+
+
+class CIL_multiview_actor_critic_RLModule(CIL_multiview_actor_critic):
+    ''' Wrapper for CIL_multiview_actor_critic in order to be used in RLModule '''
+    def __init__(self, config):
+        CIL_multiview_actor_critic.__init__(self, config['g_conf'])
+        checkpoint = config.get('checkpoint', None)
+        pretrain_value = config.get('pretrain_value', False)
+
+        if checkpoint is not None:
+            checkpoint = torch.load(
+                checkpoint,
+                map_location=next(self.parameters()).device,
+            )['model']
+            self.load_state_dict(checkpoint)
+
+        # tried to overwrite the trainable_variables method but it didn't work
+        # this is a workaround
+        if pretrain_value:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.value_output.parameters():
+                param.requires_grad = True

@@ -17,9 +17,12 @@ from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stac
 from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
 from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
+from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule
 
+from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
 from ray.rllib.utils.typing import TensorType
+from ray.rllib.utils.from_config import NotProvided
 
 # TorchBeta had a bug, this a fix for the bug
 class TorchBetaFixed(TorchBeta):
@@ -70,6 +73,8 @@ def main(args):
     num_cpus_per_learner_worker = conf.get('num_cpus_per_learner_worker', 1)
     num_gpus_per_learner_worker = conf.get('num_gpus_per_learner_worker', 0)
 
+    use_rl_module = conf.get('use_rl_module', False)
+
     extra_params = conf.extra_params
 
     path_to_conf = conf.path_to_conf
@@ -109,23 +114,48 @@ def main(args):
     # update g_conf
     merge_with_yaml(os.path.join(os.path.dirname(path_to_conf), 'CILv2.yaml'))
 
+
+        
+
     ray.init()
 
+    #################################################################
+    # Pretrain code
+    #################################################################
     if pretrain_value:
+        if use_rl_module:
+            spec = SingleAgentRLModuleSpec(
+                module_class=CILv2_RLModule,
+                model_config_dict={
+                    'g_conf': g_conf,
+                    'checkpoint': checkpoint_file,
+                    'pretrain_value': pretrain_value,
+                },
+            )
+            _enable_rl_module_api = True
+            _enable_learner_api = True
+            training_model = NotProvided 
+        else:
+            spec = NotProvided
+            _enable_rl_module_api = False
+            _enable_learner_api = False
+            training_model = { 
+                "custom_model": model_name,
+                "custom_action_dist": "beta",
+                "custom_model_config": {
+                    'g_conf': g_conf,
+                    'checkpoint': checkpoint_file,
+                    'pretrain_value': pretrain_value,
+                },
+            }
+
         config = (
             PPOConfig()
             .environment(env_name)
             .framework('torch')
             .training(
-                model={ 
-                    "custom_model": model_name,
-                    "custom_action_dist": "beta",
-                    "custom_model_config": {
-                        'g_conf': g_conf,
-                        'checkpoint': checkpoint_file,
-                        'pretrain_value': True,
-                    },
-                },
+                model=training_model,
+                _enable_learner_api=_enable_learner_api,
             )
             .rollouts(
                 num_rollout_workers=num_workers,
@@ -139,13 +169,16 @@ def main(args):
                 num_cpus_per_learner_worker=num_cpus_per_learner_worker,
                 num_gpus_per_learner_worker=num_gpus_per_learner_worker,
             )
-            .rl_module(_enable_rl_module_api=False)
-            .training(_enable_learner_api=False)
+            .rl_module(
+                rl_module_spec=spec,
+                _enable_rl_module_api=_enable_rl_module_api,
+            )
             .callbacks(LogInfoCallback)
         )
         config.update_from_dict(extra_params)
         if pretrain_complete_episodes:
             config.update_from_dict({'batch_mode': 'complete_episodes'})
+
 
         # update the learning rate if given
         lr_pretrain = conf.get('lr_pretrain', None)
@@ -174,11 +207,26 @@ def main(args):
         # update the checkpoint file
         checkpoint_file = pretrain_file
 
-    config = (
-        PPOConfig()
-        .environment(env_name)
-        .framework('torch')
-        .training(model={ 
+    #################################################################
+    # Enf of pretrain code
+    #################################################################
+    if use_rl_module:
+        spec = SingleAgentRLModuleSpec(
+            module_class=CILv2_RLModule,
+            model_config_dict={
+                'g_conf': g_conf,
+                'checkpoint': checkpoint_file,
+                'pretrain_value': False,
+            },
+        )
+        _enable_rl_module_api = True
+        _enable_learner_api = True
+        training_model = NotProvided 
+    else:
+        spec = NotProvided
+        _enable_rl_module_api = False
+        _enable_learner_api = False
+        training_model = { 
             "custom_model": model_name,
             "custom_action_dist": "beta",
             "custom_model_config": {
@@ -186,7 +234,16 @@ def main(args):
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
             },
-        })
+        }
+
+    config = (
+        PPOConfig()
+        .environment(env_name)
+        .framework('torch')
+        .training(
+            model=training_model,
+            _enable_learner_api=_enable_learner_api,
+        )
         .rollouts(
             num_rollout_workers=num_workers,
             rollout_fragment_length=rollout_fragment_length,
@@ -199,8 +256,10 @@ def main(args):
             num_cpus_per_learner_worker=num_cpus_per_learner_worker,
             num_gpus_per_learner_worker=num_gpus_per_learner_worker,
         )
-        .rl_module(_enable_rl_module_api=False)
-        .training(_enable_learner_api=False)
+        .rl_module(
+            rl_module_spec=spec,
+            _enable_rl_module_api=_enable_rl_module_api,
+        )
         .callbacks(LogInfoCallback)
     )
     config.update_from_dict(extra_params)

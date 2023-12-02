@@ -1,4 +1,7 @@
-# model name: CIL_multiview_rllib or CIL_multiview_rllib_stack
+# use the new RLLib api with RLModule
+use_rl_module: true
+
+# if not using RLModule: model name: CIL_multiview_rllib or CIL_multiview_rllib_stack
 model: CIL_multiview_rllib
 
 # use CILv2_vec_env instead of CILv2_env
