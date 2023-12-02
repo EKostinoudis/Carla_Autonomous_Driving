@@ -12,6 +12,7 @@ import torch
 from .world_handler import WorldHandler
 from .sensor import *
 from .sensor_interface import SensorInterface
+from .route_planner import RoutePlanner
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
@@ -22,6 +23,8 @@ from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
     # OnSidewalkTest,
     # OffRoadTest,
 )
+
+from agents.navigation.local_planner import RoadOption
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +52,12 @@ class Environment(gym.Env):
         self.termination_on_run = config.get('termination_on_run', True)
         self.fixed_delta_seconds = config.get('fixed_delta_seconds', 0.1)
 
-        # terminate after this seconds pass while the vehicle is stopped
+        # maximum seconds that the vehicle can be stopped
         self.stopped_termination_seconds = config.get('stopped_termination_seconds', 90)
+
+        # maximum seconds that the vehicle can be out of the lane, the junctions
+        # don't count because itsn't posible
+        self.out_of_lane_termination_seconds = config.get('out_of_lane_termination_seconds', 5)
 
         # get the reward constants-multipliers
         self.reward_failure = config.get('reward_failure', -10.)
@@ -86,6 +93,10 @@ class Environment(gym.Env):
     def reset(self, seed=None, options=None):
         self.prev_steer = 0. # previoius steer value
         self.stopped_count = 0 # ticks the vehicle is stopped
+        self.left_change_count = 0
+        self.right_change_count = 0
+        self.out_of_lane_count = 0
+        self.in_junction_count = 0
 
         if seed is not None: self.set_seed(seed)
 
@@ -94,6 +105,12 @@ class Environment(gym.Env):
         # reset the world and get the new vehicle
         self.world_handler.reset()
         self.vehicle = self.world_handler.vehicle
+
+        # set the route
+        self.route_planner = RoutePlanner(
+            self.world_handler.gps_route,
+            self.world_handler.vehicle_route,
+        )
 
         # set the new map
         self.map = CarlaDataProvider.get_map()
@@ -136,13 +153,32 @@ class Environment(gym.Env):
         # update scenario
         self.episode_alive, self.task_failed = self.world_handler.step()
 
+        # get teh new state
+        new_state = self.get_state()
+
+        # get the new command for navigation
+        self.navigation_commad = self.route_planner.step(
+            new_state['GPS'][1],
+            new_state['IMU'][1],
+        )
+
         if self.render_rgb_camera_flag: self.render_rgb_camera()
 
         # update the state of the tests
         for test in self.tests: _ = test.update()
 
-        # check if the vehicle is out of road and hold the value
+        # check if the vehicle is out of road or lane
+        self.in_junction = False
         self.out_of_road = self.check_out_of_road()
+        self.out_of_lane = self.check_out_of_lane()
+        if not self.in_junction:
+            self.in_junction_count = 0
+            if self.out_of_lane or self.out_of_lane:
+                self.out_of_lane_count += 1
+            else:
+                self.out_of_lane_count = 0
+        else:
+            self.in_junction_count += 1
 
         # update the stopped counter
         if self.get_velocity() < 0.5:
@@ -155,6 +191,7 @@ class Environment(gym.Env):
                 logger.debug(f'End episode. Task failed: {self.task_failed}')
             logger.debug(f'collision_detector: {self.collision_detector.data}')
             logger.debug(f'Out of road: {self.out_of_road}')
+            logger.debug(f'Out of lane: {self.out_of_lane}')
             logger.debug(f'stopped count: {self.stopped_count}')
             logger.debug(f'Velocity: {self.get_velocity():6.02f} '
                          f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
@@ -164,8 +201,6 @@ class Environment(gym.Env):
 
         # get the terminated and truncated values
         terminated, truncated = self.episode_end()
-
-        new_state = self.get_state()
 
         if self.return_reward_info:
             info = self.create_info_for_logging()
@@ -180,7 +215,6 @@ class Environment(gym.Env):
     def close(self):
         self.destroy_sensors()
 
-        # keep this last, maked the world asynchronous
         self.world_handler.close()
 
     def apply_action(self, action):
@@ -192,13 +226,13 @@ class Environment(gym.Env):
         self.vehicle.apply_control(self.vehicle_control)
 
     def get_reward(self) -> float:
-        self.episode_end_success_reward = 0
-        self.episode_end_fail_reward = 0
-        self.sign_run_reward = 0
-        self.not_moving_reward = 0
-        self.out_of_road_reward = 0
-        self.steering_reward = 0
-        self.speeding_reward = 0
+        self.episode_end_success_reward = 0.
+        self.episode_end_fail_reward = 0.
+        self.sign_run_reward = 0.
+        self.not_moving_reward = 0.
+        self.out_of_road_reward = 0.
+        self.steering_reward = 0.
+        self.speeding_reward = 0.
 
         # end of scenario reward
         if not self.episode_alive:
@@ -222,9 +256,14 @@ class Environment(gym.Env):
             self.not_moving_reward = self.reward_failure
             return self.not_moving_reward
 
-        # out of road
-        if self.out_of_road:
-            self.steering_reward = self.reward_wrong_lane
+        # vehicle too long out of lane
+        if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
+            self.out_of_road_reward = self.reward_wrong_lane
+            return self.reward_wrong_lane
+
+        # out of road or lane
+        if self.out_of_road or self.out_of_lane:
+            self.out_of_road_reward = self.reward_wrong_lane
 
         # steering reward (based on steer diff)
         self.steering_reward = self.reward_steer * abs(self.prev_steer - self.vehicle_control.steer)
@@ -268,6 +307,8 @@ class Environment(gym.Env):
         :return: (terminated, truncated)
         '''
         if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
+            return (True, True)
+        if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
             return (True, True)
         if not self.episode_alive: return (True, True)
         if len(self.collision_detector.data) > 0: return (True, True)
@@ -339,6 +380,7 @@ class Environment(gym.Env):
             self.map.get_waypoint(bbox[3], lane_type=carla.LaneType.Any)]
 
         if any([wp.is_junction for wp in self.bbox_wp]):
+            self.in_junction = True
             return False
 
         for i, wp in enumerate(self.bbox_wp):
@@ -352,6 +394,57 @@ class Environment(gym.Env):
                     return True
 
         return False
+
+    def check_out_of_lane(self) -> bool:
+        '''
+        Run first "check_out_of_road" method!!!
+
+        If the vehicle is in a junction we can't detect if it is out of lane,
+        because there are no lanes.
+        '''
+        # if the vehicle is out of road don't add any reward
+        if self.out_of_road:
+            return False
+
+        command = self.navigation_commad
+        if command not in [RoadOption.LEFT, RoadOption.RIGHT]:
+            if any([wp.is_junction for wp in self.bbox_wp]):
+                return False
+
+            # waypoint of the current plan
+            plan_wp = self.map.get_waypoint(self.route_planner.vehicle_route[0][0].location)
+            lane_change_left = command == RoadOption.CHANGELANELEFT
+            lane_change_right = command == RoadOption.CHANGELANERIGHT
+            if lane_change_left:
+                self.left_change_count = 10
+            elif self.left_change_count > 0:
+                self.left_change_count -= 1
+            if lane_change_right:
+                self.right_change_count = 10
+            elif self.right_change_count > 0:
+                self.right_change_count -= 1
+
+            # for the front corners
+            for i, wp in enumerate(self.bbox_wp[:2]):
+                # check out of lane
+                if wp.lane_id != plan_wp.lane_id:
+                    if wp.lane_type is not carla.LaneType.Driving: continue
+                    if lane_change_left and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
+                        continue
+                    if lane_change_right and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
+                        continue
+
+                    if command in [RoadOption.STRAIGHT, RoadOption.LANEFOLLOW]:
+                        # if we had a left change: for the right front corner check if it still on the other lane
+                        if self.left_change_count > 0 and i == 1 and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
+                            continue
+                        # if we had a right change: for the left front corner check if it still on the other lane
+                        if self.right_change_count > 0 and i == 0 and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
+                            continue
+                    return True
+
+        return False
+
 
     def destroy_sensors(self):
         '''

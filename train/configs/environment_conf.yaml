@@ -11,6 +11,10 @@ return_reward_info: true
 # terminate the episode if the vehicle doesn't move for the given time
 stopped_termination_seconds: 90
 
+# maximum seconds that the vehicle can be out of the lane, the junctions
+# don't count because itsn't posible
+out_of_lane_termination_seconds: 5
+
 seed: 0
 
 # reward contants

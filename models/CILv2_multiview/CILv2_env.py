@@ -20,7 +20,6 @@ from srunner.tools.route_manipulation import downsample_route
 from configs import g_conf, merge_with_yaml, set_type_of_process
 from dataloaders.transforms import encode_directions_4, encode_directions_6
 
-from .waypointer import Waypointer
 from environment import Environment
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 
@@ -55,18 +54,11 @@ class CILv2_env(gym.Env):
 
         self.return_reward_info = env_config.get('return_reward_info', False)
 
-        #  current global plans to reach a destination
-        self._global_plan = None
-        self._global_plan_world_coord = None
-
         self.left_change_count = 0
         self.right_change_count = 0
 
-        self.reward_wrong_lane = env_config.get('reward_wrong_lane', -1.)
-
         # this data structure will contain all sensor data
         self.sensor_interface = SensorInterface()
-        self.waypointer = None
 
         self.action_space = gym.spaces.Box(
             low=np.array([-1., -1.], dtype=np.float32),
@@ -104,16 +96,11 @@ class CILv2_env(gym.Env):
         self.env = Environment(env_config)
 
     def reset(self, *, seed=None, options=None):
-        self._global_plan = None
-        self._global_plan_world_coord = None
         self.sensor_interface = None
         self.input_data = None
-        self.waypointer = None
 
         state, info = self.env.reset(seed=seed, options=options)
         self.sensor_interface = self.env.sensor_interface
-        self.set_world(CarlaDataProvider.get_world())
-        self.set_global_plan(self.env.world_handler.gps_route, self.env.world_handler.vehicle_route)
 
         self.input_data = state
         state = self.run_step()
@@ -133,14 +120,6 @@ class CILv2_env(gym.Env):
         self.input_data = state
         state = self.run_step()
 
-        wrong_lane_reward = self.additional_reward()
-
-        reward += wrong_lane_reward
-
-
-        if self.return_reward_info:
-            info['wrong_lane_reward'] = wrong_lane_reward
-
         return state, reward, terminated, truncated, info
 
     def run_step(self):
@@ -148,107 +127,25 @@ class CILv2_env(gym.Env):
             [self.process_image(self.input_data[camera_type][1]) \
                 for camera_type in g_conf.DATA_USED],
         ).unsqueeze(0)
+
         self.norm_speed = torch.tensor(
             [self.process_speed(self.input_data['SPEED'][1]['speed'])],
             dtype=torch.float32,
         ).unsqueeze(0)
-        if g_conf.DATA_COMMAND_ONE_HOT:
-            self.direction = torch.tensor(
-                self.process_command(self.input_data['GPS'][1],
-                                     self.input_data['IMU'][1],
-                                     )[0],
-                dtype=torch.float32,
-            ).unsqueeze(0)
-        else:
-            self.direction = torch.tensor(
-                [self.process_command(self.input_data['GPS'][1],
-                                      self.input_data['IMU'][1],
-                                      )[1]-1],
-                dtype=torch.float32,
-            ).unsqueeze(0)
+
+        self.direction = torch.tensor(
+            encode_directions_6(self.env.navigation_commad),
+            dtype=torch.float32,
+        ).unsqueeze(0)
 
         return self.norm_rgb, self.direction, self.norm_speed
-
-    '''
-    def run_step_numpy(self):
-        self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]) for camera_type in g_conf.DATA_USED]]
-        self.norm_speed = [np.float32([self.process_speed(self.input_data['SPEED'][1]['speed'])])]
-        if g_conf.DATA_COMMAND_ONE_HOT:
-            self.direction = \
-                [np.float32(self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[0])]
-
-        else:
-            self.direction = \
-                [np.float32([self.process_command(self.input_data['GPS'][1], self.input_data['IMU'][1])[1]-1])]
-
-        self.norm_rgb = np.asarray(self.norm_rgb, dtype=np.float32)
-        self.direction = np.asarray(self.direction, dtype=np.float32)
-        self.norm_speed = np.asarray(self.norm_speed, dtype=np.float32)
-
-        return self.norm_rgb, self.direction, self.norm_speed
-    '''
 
     def close(self):
         self.norm_rgb = None
         self.norm_speed = None
         self.direction = None
         self.checkpoint = None
-        self.world = None
         self.env.close()
-
-    def additional_reward(self):
-        # if the vehicle is out of road don't add any reward
-        if self.env.out_of_road:
-            return 0.
-
-        command = self.waypointer._global_route[0][1]
-        if command not in [RoadOption.LEFT, RoadOption.RIGHT]:
-            if any([wp.is_junction for wp in self.env.bbox_wp]):
-                return 0.
-
-            # waypoint of the current plan
-            plan_wp = self.env.map.get_waypoint(self.waypointer._global_route[0][0].location)
-            lane_change_left = self.direction[0][4] > 0
-            lane_change_right = self.direction[0][5] > 0
-            if lane_change_left:
-                self.left_change_count = 10
-            elif self.left_change_count > 0:
-                self.left_change_count -= 1
-            if lane_change_right:
-                self.right_change_count = 10
-            elif self.right_change_count > 0:
-                self.right_change_count -= 1
-
-            # for the front corners
-            for i, wp in enumerate(self.env.bbox_wp[:2]):
-                # check out of lane
-                if wp.lane_id != plan_wp.lane_id:
-                    if wp.lane_type is not carla.LaneType.Driving: continue
-                    if lane_change_left and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
-                        continue
-                    if lane_change_right and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
-                        continue
-
-                    if command in [RoadOption.STRAIGHT, RoadOption.LANEFOLLOW]:
-                        # if we had a left change: for the right front corner check if it still on the other lane
-                        if self.left_change_count > 0 and i == 1 and abs(wp.lane_id) == abs(plan_wp.lane_id)+1:
-                            continue
-                        # if we had a right change: for the left front corner check if it still on the other lane
-                        if self.right_change_count > 0 and i == 0 and abs(wp.lane_id)+1 == abs(plan_wp.lane_id):
-                            continue
-                    return self.reward_wrong_lane
-
-        return 0.
-
-    '''
-    def process_image_numpy(self, image):
-        image = image[:,:,:3][:, :, ::-1] / 255.
-        # to numpy array and normilize
-        image = np.asarray(image, dtype=np.float32)
-        image = (image - g_conf.IMG_NORMALIZATION['mean']) / g_conf.IMG_NORMALIZATION['std']
-        image = image.transpose((2, 0 , 1))
-        return image
-    '''
 
     def process_image(self, image):
         image = Image.fromarray(image[:,:,:3][:, :, ::-1])
@@ -280,14 +177,6 @@ class CILv2_env(gym.Env):
 
         return np.clip(steer, -1, 1), np.clip(throttle, 0, 1), np.clip(brake, 0, 1)
 
-    def process_command(self, gps, imu):
-        if g_conf.DATA_COMMAND_CLASS_NUM == 6:
-            _, _, cmd = self.waypointer.tick_lb(gps, imu)
-            return encode_directions_6(cmd.value), cmd.value
-        else:
-            logger.fatal('g_conf.DATA_COMMAND_CLASS_NUM != 6 not supported')
-            exit(1)
-
     def setup_model(self, path_to_conf_file):
         exp_dir = os.path.split(path_to_conf_file)[0]
 
@@ -297,19 +186,6 @@ class CILv2_env(gym.Env):
 
         root_dir = os.path.abspath(os.path.join(exp_dir, '..', '..', '..'))
         set_type_of_process('train_only', root=root_dir)
-
-    def set_world(self, world):
-        self.world = world
-
-    def set_global_plan(self, global_plan_gps, global_plan_world_coord):
-        """
-        Set the plan (route) for the agent
-        """
-
-        ds_ids = downsample_route(global_plan_world_coord, 50)
-        self._global_plan_world_coord = [(global_plan_world_coord[x][0], global_plan_world_coord[x][1]) for x in ds_ids]
-        self._global_plan = [global_plan_gps[x] for x in ds_ids]
-        self.waypointer = Waypointer(self.world, global_plan_gps=self._global_plan, global_route=global_plan_world_coord)
 
     def sensors(self):
         sensors = [
