@@ -205,7 +205,8 @@ def main(args):
             'default_policy',
         )
         model = Policy.from_checkpoint(checkpoint).model
-        torch.save({'model': model.state_dict()}, pretrain_file)
+        state_dict = {k[6:] if k.startswith('model.') else k: v for k, v in model.state_dict().items()}
+        torch.save({'model': state_dict}, pretrain_file)
 
         # update the checkpoint file
         checkpoint_file = pretrain_file
