@@ -66,6 +66,7 @@ class Environment(gym.Env):
         self.reward_steer = config.get('reward_steer', -0.1)
         self.reward_speed = config.get('reward_speed', 0.1)
         self.reward_max_speed = config.get('reward_max_speed', 30.)
+        self.reward_waypoint = config.get('reward_waypoint', 30.)
 
         self.vehicle = None
         self.sensors_env = []
@@ -157,10 +158,12 @@ class Environment(gym.Env):
         new_state = self.get_state()
 
         # get the new command for navigation
+        prev_len = len(self.route_planner.gps_route)
         self.navigation_commad = self.route_planner.step(
             new_state['GPS'][1],
             new_state['IMU'][1],
         )
+        self.reached_wp = prev_len > len(self.route_planner.gps_route)
 
         if self.render_rgb_camera_flag: self.render_rgb_camera()
 
@@ -233,6 +236,7 @@ class Environment(gym.Env):
         self.out_of_road_reward = 0.
         self.steering_reward = 0.
         self.speeding_reward = 0.
+        self.reached_wp_reward = self.reached_wp * self.reward_waypoint
 
         # end of scenario reward
         if not self.episode_alive:
@@ -281,7 +285,8 @@ class Environment(gym.Env):
         return self.not_moving_reward + \
                self.out_of_road_reward + \
                self.steering_reward + \
-               self.speeding_reward
+               self.speeding_reward + \
+               self.reached_wp_reward
 
     def create_info_for_logging(self):
         return {
@@ -292,6 +297,7 @@ class Environment(gym.Env):
             'out_of_road_reward': self.out_of_road_reward,
             'steering_reward': self.steering_reward,
             'speeding_reward': self.speeding_reward,
+            'reached_wp_reward': self.reached_wp_reward,
             'speed': self.get_velocity(),
             'throttle': self.vehicle_control.throttle,
             'brake': self.vehicle_control.brake,

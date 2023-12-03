@@ -24,6 +24,7 @@ reward_wrong_lane: -1.0
 reward_steer: -0.1
 reward_speed: 0.1
 reward_max_speed: 30.0
+reward_waypoint: 1
 
 # for the carla server
 ip: localhost
