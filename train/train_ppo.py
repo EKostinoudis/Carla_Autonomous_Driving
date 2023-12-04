@@ -2,6 +2,7 @@ import os
 import torch
 import argparse
 from omegaconf import OmegaConf
+from omegaconf.listconfig import ListConfig
 import math
 
 import ray
@@ -77,7 +78,11 @@ def main(args):
 
     output_distribution = conf.get('output_distribution', 'gaussian')
 
-    extra_params = conf.extra_params
+    extra_params = dict(conf.extra_params)
+    entropy_coeff = extra_params.get('entropy_coeff', None)
+    if entropy_coeff is not None and isinstance(entropy_coeff, ListConfig):
+        entropy_coeff = [tuple(item) for item in entropy_coeff]
+        extra_params['entropy_coeff'] = entropy_coeff
 
     path_to_conf = conf.path_to_conf
 
