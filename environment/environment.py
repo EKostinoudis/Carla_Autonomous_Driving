@@ -44,6 +44,7 @@ class Environment(gym.Env):
 
         self.return_reward_info = config.get('return_reward_info', False)
         self.debug = config.get('debug', False)
+        self.use_leaderboard_setting = config.get('use_leaderboard_setting', True)
 
         # display camera movement (mainly for debug)
         self.render_rgb_camera_flag = config.get('render_rgb_camera', False)
@@ -120,9 +121,12 @@ class Environment(gym.Env):
 
         # vehicle's sensors
         self.sensor_interface = SensorInterface()
-        self.sensors = setup_sensors(self.sensors_config,
-                                     self.vehicle,
-                                     self.sensor_interface)
+        self.sensors = setup_sensors(
+            self.sensors_config,
+            self.vehicle,
+            self.sensor_interface,
+            self.use_leaderboard_setting,
+        )
 
         self.init_tests()
 
