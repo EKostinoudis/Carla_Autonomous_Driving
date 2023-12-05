@@ -176,11 +176,13 @@ class Environment(gym.Env):
         self.out_of_lane = self.check_out_of_lane()
         if not self.in_junction:
             self.in_junction_count = 0
-            if self.out_of_lane or self.out_of_lane:
+            if self.out_of_road or self.out_of_lane:
                 self.out_of_lane_count += 1
             else:
                 self.out_of_lane_count = 0
         else:
+            if self.out_of_road or self.out_of_lane:
+                self.out_of_lane_count += 1
             self.in_junction_count += 1
 
         # update the stopped counter

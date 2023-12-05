@@ -22,10 +22,7 @@ class CILv2_RLModule(TorchRLModule, PPORLModule):
         if dist == 'beta':
             self.action_dist_cls = TorchBetaDistribution
         elif dist == 'gaussian':
-            class MyTorchDiagGaussian(TorchDiagGaussian):
-                def logp(self, value):
-                    return super().logp(torch.clip(value, 1e-10, 1.0))
-            self.action_dist_cls = MyTorchDiagGaussian
+            self.action_dist_cls = TorchDiagGaussian
         else:
             raise ValueError(
                 f'{dist} distribution not supported. Use "beta" or "gaussian"'
