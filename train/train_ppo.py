@@ -12,7 +12,7 @@ from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
 from train.utils import get_config_path, update_to_abspath
-from train.callback import LogInfoCallback
+from train.callback import LogInfoCallback, NormValueInfoCallback
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
@@ -77,6 +77,12 @@ def main(args):
     use_rl_module = conf.get('use_rl_module', False)
 
     output_distribution = conf.get('output_distribution', 'gaussian')
+
+    # callback
+    if conf.get('norm_target_value', False):
+        callback = NormValueInfoCallback
+    else:
+        callback = LogInfoCallback
 
     extra_params = dict(conf.extra_params)
     entropy_coeff = extra_params.get('entropy_coeff', None)
@@ -181,7 +187,7 @@ def main(args):
                 rl_module_spec=spec,
                 _enable_rl_module_api=_enable_rl_module_api,
             )
-            .callbacks(LogInfoCallback)
+            .callbacks(callback)
         )
         config.update_from_dict(extra_params)
         if pretrain_complete_episodes:
@@ -270,7 +276,7 @@ def main(args):
             rl_module_spec=spec,
             _enable_rl_module_api=_enable_rl_module_api,
         )
-        .callbacks(LogInfoCallback)
+        .callbacks(callback)
     )
     config.update_from_dict(extra_params)
 

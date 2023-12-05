@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Dict
 import numpy as np
+import torch
 
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env import BaseEnv
@@ -54,3 +55,35 @@ class LogInfoCallback(DefaultCallbacks):
             episode.custom_metrics[name + "_sum"] = np.sum(value)
             episode.hist_data[name] = value
 
+class NormValueInfoCallback(LogInfoCallback):
+    def on_create_policy(self, *, policy_id, policy: Policy) -> None:
+        policy.mean_vf_target = 0.
+        policy.var_vf_target = 1.
+        policy.decay = 0.9
+
+    def on_postprocess_trajectory(
+        self,
+        *,
+        worker,
+        episode,
+        agent_id,
+        policy_id,
+        policies,
+        postprocessed_batch,
+        original_batches,
+        **kwargs,
+    ) -> None:
+        policy = policies[policy_id]
+
+        with torch.no_grad():
+            policy.mean_vf_target = policy.decay * policy.mean_vf_target + \
+                (1 - policy.decay) * np.mean(postprocessed_batch[SampleBatch.VF_PREDS])
+            policy.var_vf_target = policy.decay * policy.mean_vf_target + \
+                (1 - policy.decay) * np.var(postprocessed_batch[SampleBatch.VF_PREDS])
+
+            postprocessed_batch[SampleBatch.VF_PREDS] = \
+             (postprocessed_batch[SampleBatch.VF_PREDS] - policy.mean_vf_target) / (policy.var_vf_target + 1e-8)
+
+        episode.custom_metrics['mean_vf_target'] = policy.mean_vf_target
+        episode.custom_metrics['var_vf_target'] = policy.var_vf_target
+        episode.custom_metrics['decay_vf_target'] = policy.decay

@@ -23,6 +23,9 @@ pretrain_iters: 2
 pretrain_complete_episodes: true # use batch_mode: complete_episodes for the pretraining
 lr_pretrain: 5.0e-05 # lr for pretraining (null or remove it to use the same as training)
 
+# normalize the target value function (with exponentially weighted moving average)
+norm_target_value: true
+
 train_iters: 1000
 
 # for sampling
