@@ -26,7 +26,14 @@ reward_speed: 0.1
 reward_max_speed: 30.0
 reward_waypoint: 1
 
+#
 # for the carla server
+#
+use_carla_launcer: true # if true launch the server in the environment
+
+# command to launch the carla server, takes the port as first argument
+carla_launch_script: "bash launch_carla_server.sh"
+carla_restart_after: 20 # amount of resets to restart the server
 ip: localhost
 port: 2000
 worker_threads: 2 # for the Client class https://carla.readthedocs.io/en/0.9.15/python_api/#carlaclient

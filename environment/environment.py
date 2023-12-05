@@ -13,6 +13,7 @@ from .world_handler import WorldHandler
 from .sensor import *
 from .sensor_interface import SensorInterface
 from .route_planner import RoutePlanner
+from .carla_launcher import CarlaLauncher
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
@@ -34,6 +35,19 @@ class Environment(gym.Env):
         if not isinstance(config, DictConfig): config = OmegaConf.create(dict(config))
         # self.config = config
         self.sensors_config = config.sensors
+
+        self.use_launcer = config.get('use_carla_launcer', False)
+        if self.use_launcer:
+            launch_script = config.get('carla_launch_script', None)
+            if launch_script is None:
+                raise ValueError('Must provide "carla_launch_script" in the environment config')
+            self.carla_launcer = CarlaLauncher(
+                config.get('port', 2000),
+                launch_script,
+                config.get('carla_restart_after', -1),
+            )
+        else:
+            self.carla_launcer = None
 
         # create world handler
         self.world_handler = WorldHandler(config)
@@ -103,6 +117,9 @@ class Environment(gym.Env):
         if seed is not None: self.set_seed(seed)
 
         self.destroy_sensors()
+
+        # if needed restart the carla server (mainly to avoid memory leaks)
+        if self.carla_launcer is not None: self.carla_launcer.reset()
 
         # reset the world and get the new vehicle
         self.world_handler.reset()
@@ -225,6 +242,8 @@ class Environment(gym.Env):
         self.destroy_sensors()
 
         self.world_handler.close()
+
+        if self.carla_launcer is not None: self.carla_launcer.reset()
 
     def apply_action(self, action):
         self.vehicle_control.throttle = action[0]
