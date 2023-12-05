@@ -8,6 +8,7 @@ from ray.rllib.env import BaseEnv
 from ray.rllib.policy import Policy
 from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
+from ray.rllib.policy.sample_batch import SampleBatch
 
 class LogInfoCallback(DefaultCallbacks):
     '''
@@ -78,7 +79,7 @@ class NormValueInfoCallback(LogInfoCallback):
         with torch.no_grad():
             policy.mean_vf_target = policy.decay * policy.mean_vf_target + \
                 (1 - policy.decay) * np.mean(postprocessed_batch[SampleBatch.VF_PREDS])
-            policy.var_vf_target = policy.decay * policy.mean_vf_target + \
+            policy.var_vf_target = policy.decay * policy.var_vf_target + \
                 (1 - policy.decay) * np.var(postprocessed_batch[SampleBatch.VF_PREDS])
 
             postprocessed_batch[SampleBatch.VF_PREDS] = \
