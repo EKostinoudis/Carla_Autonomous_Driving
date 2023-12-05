@@ -4,6 +4,7 @@
 import carla
 import numpy as np
 import math
+from collections import deque
 
 from srunner.tools.route_manipulation import downsample_route
 
@@ -15,8 +16,8 @@ class RoutePlanner:
     def __init__(self, gps_route, vehicle_route, success_dist=12.) -> None:
         gps_route, vehicle_route = self.process_global_plan(gps_route, vehicle_route)
         gps_route = [([loc['lat'], loc['lon'], loc['z']], cmd) for loc, cmd in gps_route]
-        self.vehicle_route = vehicle_route
-        self.gps_route = gps_route
+        self.vehicle_route = deque(vehicle_route)
+        self.gps_route = deque(gps_route)
         self.success_dist = success_dist # dist from the center of the waypoint
         self.current_idx = -1
 
@@ -41,8 +42,8 @@ class RoutePlanner:
         self.wp_in_front = loc_in_ev.x < 0.0
         # print('Distance:', self.dist_from_wp, '| In front:', self.wp_in_front)
         if self.dist_from_wp < self.success_dist and self.wp_in_front:
-            self.gps_route.pop(0)
-            self.vehicle_route.pop(0)
+            self.gps_route.popleft()
+            self.vehicle_route.popleft()
 
         _, road_option = self.gps_route[0]
         return road_option
