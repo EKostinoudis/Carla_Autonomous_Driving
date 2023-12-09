@@ -7,6 +7,9 @@ model: CIL_multiview_rllib
 # the distribution to use for the policy, options: gaussian, beta
 output_distribution: gaussian
 
+# calculate the kl loss of the pretrained policy and the current (works only with RLModule)
+use_pretrained_kl_loss: true
+
 # use CILv2_vec_env instead of CILv2_env
 use_vec_env: true
 no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0

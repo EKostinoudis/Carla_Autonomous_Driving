@@ -13,12 +13,13 @@ from ray.rllib.models import ModelCatalog
 
 from train.utils import get_config_path, update_to_abspath
 from train.callback import LogInfoCallback, NormValueInfoCallback
+from train.rllib_trainers import PPOTorchLearnerClearCache, PPOTorchLearnerPretrainedKLLoss
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
 from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
-from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule
+from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule, CILv2_RLModule_PT_Policy
 
 from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
@@ -77,6 +78,14 @@ def main(args):
     use_rl_module = conf.get('use_rl_module', False)
 
     output_distribution = conf.get('output_distribution', 'gaussian')
+
+    use_pretrained_kl_loss = conf.get('use_pretrained_kl_loss', False)
+    if use_pretrained_kl_loss:
+        trainer = PPOTorchLearnerPretrainedKLLoss
+        rl_module = CILv2_RLModule_PT_Policy
+    else:
+        trainer = PPOTorchLearnerClearCache
+        rl_module = CILv2_RLModule
 
     # callback
     if conf.get('norm_target_value', False):
@@ -138,7 +147,7 @@ def main(args):
     if pretrain_value:
         if use_rl_module:
             spec = SingleAgentRLModuleSpec(
-                module_class=CILv2_RLModule,
+                module_class=rl_module,
                 model_config_dict={
                     'g_conf': g_conf,
                     'checkpoint': checkpoint_file,
@@ -149,6 +158,7 @@ def main(args):
             _enable_learner_api = True
             training_model = NotProvided 
         else:
+            trainer = NotProvided
             spec = NotProvided
             _enable_rl_module_api = False
             _enable_learner_api = False
@@ -170,6 +180,7 @@ def main(args):
             .training(
                 model=training_model,
                 _enable_learner_api=_enable_learner_api,
+                learner_class=trainer,
             )
             .rollouts(
                 num_rollout_workers=num_workers,
@@ -227,7 +238,7 @@ def main(args):
     #################################################################
     if use_rl_module:
         spec = SingleAgentRLModuleSpec(
-            module_class=CILv2_RLModule,
+            module_class=rl_module,
             model_config_dict={
                 'g_conf': g_conf,
                 'checkpoint': checkpoint_file,
@@ -238,6 +249,7 @@ def main(args):
         _enable_learner_api = True
         training_model = NotProvided 
     else:
+        trainer = NotProvided
         spec = NotProvided
         _enable_rl_module_api = False
         _enable_learner_api = False
@@ -259,6 +271,7 @@ def main(args):
         .training(
             model=training_model,
             _enable_learner_api=_enable_learner_api,
+            learner_class=trainer,
         )
         .rollouts(
             num_rollout_workers=num_workers,
