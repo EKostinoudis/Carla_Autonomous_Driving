@@ -47,6 +47,13 @@ class PPOTorchLearnerPretrainedKLLoss(PPOTorchLearner):
         pt_kl = torch.mean(pt_action_dist.kl(curr_action_dist))
         pt_kl_loss = self.pt_kl_coeff * pt_kl
 
+        self.register_metrics(
+            module_id,
+            {
+                'pretrained_kl_loss': pt_kl,
+                'pretrained_kl_loss_scaled': pt_kl_loss,
+            },
+        )
         return ret + pt_kl_loss
 
     def additional_update_for_module(self, *, module_id, hps, timestep, sampled_kl_values):
