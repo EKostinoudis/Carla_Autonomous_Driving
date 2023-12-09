@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class CarlaLauncher():
-    def __init__(self, port, launch_script, restart_after=-1, sleep=5.):
+    def __init__(self, port, launch_script, restart_after=-1, sleep=10.):
         '''
         port: The port of carla server
         launch_script: A script that takes as argument the port and launches the
@@ -24,7 +24,7 @@ class CarlaLauncher():
         # TODO: maybe try to connect to the server and set it on sync mode, in
         #       order to avoid this sleep
         # extra sleep time for the cold start, also we may lauch many servers
-        time.sleep(self.sleep * 20)
+        time.sleep(self.sleep * 10)
 
     def reset(self):
         if self.restart_after >= 0:
