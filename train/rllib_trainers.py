@@ -5,6 +5,17 @@ from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.algorithms.ppo.torch.ppo_torch_learner import PPOTorchLearner
 
 from ray.rllib.utils.torch_utils import sequence_mask
+from ray.rllib.core.learner.torch.torch_learner import TorchLearner
+from ray.rllib.evaluation.postprocessing import Postprocessing
+from ray.rllib.core.learner.learner import POLICY_LOSS_KEY, VF_LOSS_KEY, ENTROPY_KEY
+from ray.rllib.utils.torch_utils import explained_variance
+from ray.rllib.algorithms.ppo.ppo_learner import (
+    LEARNER_RESULTS_VF_EXPLAINED_VAR_KEY,
+    LEARNER_RESULTS_VF_LOSS_UNCLIPPED_KEY,
+    PPOLearner,
+)
+
+
 
 class PPOTorchLearnerClearCache(PPOTorchLearner):
     def additional_update_for_module(self, *, module_id, hps, timestep, sampled_kl_values):
