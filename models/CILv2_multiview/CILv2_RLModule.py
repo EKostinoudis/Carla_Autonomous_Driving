@@ -72,6 +72,7 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         # fixed pretrained model
         self.pt_model = [CIL_multiview_actor_critic_RLModule(
             self.config.model_config_dict).requires_grad_(False)]
+        self.pt_model_device_set = False
 
         # for now we use the model config for passing the distribution, the
         # proper way is the catalog class
@@ -113,13 +114,13 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         if len(s_s.shape) == 3: s_s = s_s.squeeze(1)
         with torch.no_grad():
             action_logits = self.model.forward(s, s_d, s_s).squeeze(1)
-            pt_action_logits = self.pt_model[0].forward(s, s_d, s_s).squeeze(1)
         output[SampleBatch.VF_PREDS] = self.model._value_out.view(-1)
         output[SampleBatch.ACTION_DIST_INPUTS] = action_logits
-        output['pretrained_action_dist'] = pt_action_logits
         return output
 
     def _forward_train(self, batch: NestedDict) -> Mapping[str, Any]:
+        if self.pt_model_device_set:
+            self.pt_model[0].to(next(self.model.parameters()).device)
         output = {}
         s, s_d, s_s = restore_original_dimensions(
             batch[SampleBatch.OBS],
@@ -131,5 +132,8 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         action_logits = self.model.forward(s, s_d, s_s).squeeze(1)
         output[SampleBatch.VF_PREDS] = self.model._value_out.view(-1)
         output[SampleBatch.ACTION_DIST_INPUTS] = action_logits
+        with torch.no_grad():
+            pt_action_logits = self.pt_model[0].forward(s, s_d, s_s).squeeze(1)
+        output['pretrained_action_dist'] = pt_action_logits
         return output
 

@@ -68,7 +68,7 @@ class PPOTorchLearnerPretrainedKLLoss(PPOLearner, TorchLearner):
         )
 
         pt_action_dist = action_dist_class_exploration.from_logits(
-            batch['pretrained_action_dist'],
+            fwd_out['pretrained_action_dist'],
         )
 
         curr_action_dist = action_dist_class_train.from_logits(
