@@ -171,7 +171,7 @@ class PPOTorchLearnerPretrainedKLLoss_OLD(PPOTorchLearner):
             self.module[module_id].unwrapped().get_exploration_action_dist_cls()
         )
         pt_action_dist = action_dist_class.from_logits(
-            batch['pretrained_action_dist'],
+            fwd_out['pretrained_action_dist'],
         )
         curr_action_dist = action_dist_class.from_logits(
             fwd_out[SampleBatch.ACTION_DIST_INPUTS]

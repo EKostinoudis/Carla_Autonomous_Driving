@@ -119,8 +119,9 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         return output
 
     def _forward_train(self, batch: NestedDict) -> Mapping[str, Any]:
-        if self.pt_model_device_set:
+        if not self.pt_model_device_set:
             self.pt_model[0].to(next(self.model.parameters()).device)
+            self.pt_model_device_set = True
         output = {}
         s, s_d, s_s = restore_original_dimensions(
             batch[SampleBatch.OBS],
