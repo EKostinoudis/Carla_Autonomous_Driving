@@ -1,6 +1,7 @@
 import subprocess
 import time
 import logging
+import carla
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,14 @@ class CarlaLauncher():
         self.sleep = sleep
         self.server = None
         self.count_resets = 0
+        self.port = port
 
         self.lauch()
 
         # TODO: maybe try to connect to the server and set it on sync mode, in
         #       order to avoid this sleep
         # extra sleep time for the cold start, also we may lauch many servers
-        time.sleep(self.sleep * 10)
+        # time.sleep(self.sleep * 10)
 
     def reset(self):
         if self.restart_after >= 0:
@@ -44,11 +46,31 @@ class CarlaLauncher():
             shell=True,
         )
         time.sleep(self.sleep)
+        self.try_set_synchronous_mode()
 
 
     def kill(self):
         if self.server is not None:
-            logger.info('Killing server')
+            logger.info(f'Killing server: {self.port}')
             self.server.kill()
             time.sleep(self.sleep)
+
+    def set_synchronous_mode(self, client, synchronous_mode=True, delta_seconds=0.1):
+        settings = client.get_world().get_settings()
+        settings.synchronous_mode = synchronous_mode
+        settings.fixed_delta_seconds = delta_seconds
+        client.get_world().apply_settings(settings)
+
+    def try_set_synchronous_mode(self, tries=20):
+        # Connect to the Carla simulator
+        for _ in range(tries):
+            try:
+                client = carla.Client('localhost', self.port)
+                client.set_timeout(30)
+                self.set_synchronous_mode(client)
+                return
+            except:
+                time.sleep(self.sleep)
+        print(f'Failed to set synchronous mode {self.port}')
+
 

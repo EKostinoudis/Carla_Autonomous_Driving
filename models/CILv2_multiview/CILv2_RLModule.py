@@ -72,7 +72,6 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         # fixed pretrained model
         self.pt_model = [CIL_multiview_actor_critic_RLModule(
             self.config.model_config_dict).requires_grad_(False)]
-        self.pt_model[0].eval()
 
         # for now we use the model config for passing the distribution, the
         # proper way is the catalog class
