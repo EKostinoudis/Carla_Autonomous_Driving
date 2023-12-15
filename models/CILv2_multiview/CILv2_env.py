@@ -94,7 +94,15 @@ class CILv2_env(gym.Env):
         self.sensor_interface = None
         self.input_data = None
 
-        state, info = self.env.reset(seed=seed, options=options)
+        while True:
+            try:
+                state, info = self.env.reset(seed=seed, options=options)
+            except Exception as e:
+                logger.warning(f'Got exception: {e}')
+                self.env.restart_server = True
+            else:
+                break
+
         self.sensor_interface = self.env.sensor_interface
 
         self.input_data = state
@@ -110,7 +118,16 @@ class CILv2_env(gym.Env):
         throttle = float(throttle)
         brake = float(brake)
 
-        state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
+        try:
+            state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
+        except Exception as e:
+            logger.warning(f'Got exception: {e}')
+            self.env.restart_server = True
+            state = self.observation_space.sample() 
+            reward = 0.
+            terminated = True
+            truncated = True
+            info = {}
 
         self.input_data = state
         state = self.run_step()

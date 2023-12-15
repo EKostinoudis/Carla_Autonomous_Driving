@@ -28,9 +28,9 @@ class CarlaLauncher():
         # extra sleep time for the cold start, also we may lauch many servers
         # time.sleep(self.sleep * 10)
 
-    def reset(self):
-        if self.restart_after >= 0:
-            if self.count_resets >= self.restart_after:
+    def reset(self, restart_server=False):
+        if self.restart_after >= 0 or restart_server:
+            if self.count_resets >= self.restart_after or restart_server:
                 self.lauch()
                 self.count_resets = 0
                 return

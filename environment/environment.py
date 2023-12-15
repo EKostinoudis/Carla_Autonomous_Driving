@@ -36,6 +36,7 @@ class Environment(gym.Env):
         # self.config = config
         self.sensors_config = config.sensors
 
+        self.restart_server = False
         self.use_launcer = config.get('use_carla_launcer', False)
         if self.use_launcer:
             launch_script = config.get('carla_launch_script', None)
@@ -119,7 +120,9 @@ class Environment(gym.Env):
         self.destroy_sensors()
 
         # if needed restart the carla server (mainly to avoid memory leaks)
-        if self.carla_launcer is not None: self.carla_launcer.reset()
+        if self.carla_launcer is not None:
+            self.carla_launcer.reset(restart_server=self.restart_server)
+            self.restart_server = False
 
         # reset the world and get the new vehicle
         self.world_handler.reset()
