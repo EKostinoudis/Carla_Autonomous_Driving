@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import os
 import json
 import numpy as np
@@ -89,6 +90,7 @@ class CILv2_env(gym.Env):
 
         # init env
         self.env = Environment(env_config)
+        self.env_config = env_config
 
     def reset(self, *, seed=None, options=None):
         self.sensor_interface = None
@@ -98,8 +100,10 @@ class CILv2_env(gym.Env):
             try:
                 state, info = self.env.reset(seed=seed, options=options)
             except Exception as e:
-                logger.warning(f'Got exception: {e}')
-                self.env.restart_server = True
+                logger.warning(f'Reset: Got exception: {e}')
+                logger.warning(traceback.format_exc())
+                # self.env.restart_server = True
+                self.restart_env()
             else:
                 break
 
@@ -121,8 +125,12 @@ class CILv2_env(gym.Env):
         try:
             state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
         except Exception as e:
-            logger.warning(f'Got exception: {e}')
-            self.env.restart_server = True
+            logger.warning(f'Step: Got exception: {e}')
+            logger.warning(traceback.format_exc())
+            # self.env.restart_server = True
+
+            self.restart_env()
+
             state = self.observation_space.sample() 
             reward = 0.
             terminated = True
@@ -133,6 +141,10 @@ class CILv2_env(gym.Env):
         state = self.run_step()
 
         return state, reward, terminated, truncated, info
+
+    def restart_env(self):
+        self.env.close()
+        self.env = Environment(self.env_config)
 
     def run_step(self):
         self.norm_rgb = torch.stack(

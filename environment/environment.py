@@ -246,7 +246,7 @@ class Environment(gym.Env):
 
         self.world_handler.close()
 
-        if self.carla_launcer is not None: self.carla_launcer.reset()
+        if self.carla_launcer is not None: self.carla_launcer.kill()
 
     def apply_action(self, action):
         self.vehicle_control.throttle = action[0]
