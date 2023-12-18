@@ -177,7 +177,6 @@ class CILv2_agent(AutonomousAgent):
         if self.waypointer is None:
             self.set_waypointer()
         self.input_data = input_data
-        # print('MAP:', self.data['map'])
 
         self.control = carla.VehicleControl()
         self.norm_rgb = [[self.process_image(self.input_data[camera_type][1]).unsqueeze(0).to(self.device) for camera_type in g_conf.DATA_USED]]

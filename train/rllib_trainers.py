@@ -145,10 +145,13 @@ class PPOTorchLearnerPretrainedKLLoss(PPOLearner, TorchLearner):
         # update the pretrained kl coefficient
         self.pt_kl_coeff *= self.pt_kl_coeff_decay
 
+        '''
         # clear gpu memory cache
         gc.collect()
         with torch.no_grad():
             torch.cuda.empty_cache()
+        '''
+
         return results
 
 

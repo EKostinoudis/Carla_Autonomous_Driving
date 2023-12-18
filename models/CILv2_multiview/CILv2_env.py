@@ -143,7 +143,7 @@ class CILv2_env(gym.Env):
         return state, reward, terminated, truncated, info
 
     def restart_env(self):
-        self.env.close()
+        if self.env.carla_launcer is not None: self.env.carla_launcer.kill()
         self.env = Environment(self.env_config)
 
     def run_step(self):
