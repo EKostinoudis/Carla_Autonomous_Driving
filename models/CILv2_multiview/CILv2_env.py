@@ -89,8 +89,9 @@ class CILv2_env(gym.Env):
             env_config['sensors'] = self.sensors()
 
         # init env
-        self.env = Environment(env_config)
+        self.env = None
         self.env_config = env_config
+        self.restart_env()
 
     def reset(self, *, seed=None, options=None):
         self.sensor_interface = None
@@ -143,8 +144,17 @@ class CILv2_env(gym.Env):
         return state, reward, terminated, truncated, info
 
     def restart_env(self):
-        if self.env.carla_launcer is not None: self.env.carla_launcer.kill()
-        self.env = Environment(self.env_config)
+        # kill carla server if it exists
+        if self.env is not None and self.env.carla_launcer is not None: self.env.carla_launcer.kill()
+
+        while True:
+            try:
+                self.env = Environment(self.env_config)
+            except Exception as e:
+                logger.warning(f'Reset: Got exception: {e}')
+                logger.warning(traceback.format_exc())
+            else:
+                break
 
     def run_step(self):
         self.norm_rgb = torch.stack(
