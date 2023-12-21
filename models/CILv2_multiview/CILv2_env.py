@@ -151,7 +151,7 @@ class CILv2_env(gym.Env):
             try:
                 self.env = Environment(self.env_config)
             except Exception as e:
-                logger.warning(f'Reset: Got exception: {e}')
+                logger.warning(f'Restart env: Got exception: {e}')
                 logger.warning(traceback.format_exc())
             else:
                 break
