@@ -15,7 +15,6 @@ from PIL import Image
 import torch
 import torchvision.transforms.functional as TF
 
-from environment.sensor_interface import SensorInterface
 from configs import g_conf, merge_with_yaml, set_type_of_process
 from dataloaders.transforms import encode_directions_6
 
@@ -52,9 +51,6 @@ class CILv2_env(gym.Env):
 
         self.left_change_count = 0
         self.right_change_count = 0
-
-        # this data structure will contain all sensor data
-        self.sensor_interface = SensorInterface()
 
         self.action_space = gym.spaces.Box(
             low=np.array([-1., -1.], dtype=np.float32),
@@ -94,7 +90,6 @@ class CILv2_env(gym.Env):
         self.restart_env()
 
     def reset(self, *, seed=None, options=None):
-        self.sensor_interface = None
         self.input_data = None
 
         while True:
@@ -107,8 +102,6 @@ class CILv2_env(gym.Env):
                 self.restart_env()
             else:
                 break
-
-        self.sensor_interface = self.env.sensor_interface
 
         self.input_data = state
         state = self.run_step()
