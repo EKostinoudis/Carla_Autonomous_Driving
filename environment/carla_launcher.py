@@ -2,6 +2,7 @@ import subprocess
 import time
 import logging
 import carla
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,13 @@ class CarlaLauncher():
     def kill(self):
         if self.server is not None:
             logger.info(f'Killing server: {self.port}')
-            self.server.kill()
+
+            # kill method doesn't work on windows
+            if os.name == 'nt':
+                subprocess.call(['taskkill', '/F', '/T', '/PID', str(self.server.pid)])
+            else:
+                self.server.kill()
+
             time.sleep(self.sleep)
 
     def set_synchronous_mode(self, client, synchronous_mode=True, delta_seconds=0.1):
