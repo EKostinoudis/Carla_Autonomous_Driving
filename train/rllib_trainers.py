@@ -226,7 +226,7 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
 
         # pretrained kl loss
         pt_kl = torch.mean(pt_action_dist.kl(curr_action_dist))
-        pt_kl_loss = self.pt_kl_coeff * pt_kl
+        pt_kl_loss = self.curr_kl_coeffs_per_module[module_id] * self.pt_kl_coeff * pt_kl
 
         total_loss = possibly_masked_mean(
             -surrogate_loss
@@ -235,7 +235,7 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
                 self.entropy_coeff_schedulers_per_module[module_id].get_current_value()
                 * curr_entropy
             )
-            + self.curr_kl_coeffs_per_module[module_id] * pt_kl_loss
+            + pt_kl_loss
         )
 
         # Register important loss stats.
@@ -249,7 +249,7 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
                     batch[Postprocessing.VALUE_TARGETS], value_fn_out
                 ),
                 ENTROPY_KEY: mean_entropy,
-                LEARNER_RESULTS_KL_KEY: pt_kl_loss,
+                LEARNER_RESULTS_KL_KEY: pt_kl,
                 'pretrained_kl_loss_scaled': pt_kl_loss,
                 'pretrained_kl_loss_coef': self.pt_kl_coeff,
             },
