@@ -9,12 +9,15 @@ output_distribution: gaussian
 
 ########################################################################################
 # Choose only one from the below (if more than one selection the order here is followed)
-#
+
 # calculate the kl loss of the pretrained policy and the current (works only with RLModule)
-use_pretrained_kl_loss: false
+use_pretrained_kl_loss: true
+
+# calculate the kl loss of the pretrained policy and the current (works only with RLModule)
+use_pretrained_scaled_kl_loss: false
 
 # use 2 clip losses, the normal one and one using the pretrained model (works only with RLModule)
-use_double_clip_loss: true
+use_double_clip_loss: false
 ########################################################################################
 
 # use CILv2_vec_env instead of CILv2_env
