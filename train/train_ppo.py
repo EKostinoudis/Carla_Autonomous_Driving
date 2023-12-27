@@ -16,7 +16,7 @@ from train.callback import LogInfoCallback, NormValueInfoCallback
 from train.rllib_trainers import (
     PPOTorchLearnerClearCache,
     PPOTorchLearnerPretrainedKLLoss,
-    PPOTorchLearnerPretrainedKLLoss,
+    PPOTorchLearnerDoubleClip,
 )
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
