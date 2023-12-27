@@ -10,6 +10,7 @@ from ray.rllib.evaluation.postprocessing import Postprocessing
 from ray.rllib.core.learner.learner import POLICY_LOSS_KEY, VF_LOSS_KEY, ENTROPY_KEY
 from ray.rllib.utils.torch_utils import explained_variance
 from ray.rllib.algorithms.ppo.ppo_learner import (
+    LEARNER_RESULTS_KL_KEY,
     LEARNER_RESULTS_VF_EXPLAINED_VAR_KEY,
     LEARNER_RESULTS_VF_LOSS_UNCLIPPED_KEY,
     PPOLearner,
@@ -247,6 +248,7 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
                     batch[Postprocessing.VALUE_TARGETS], value_fn_out
                 ),
                 ENTROPY_KEY: mean_entropy,
+                LEARNER_RESULTS_KL_KEY: pt_kl_loss,
                 'pretrained_kl_loss_scaled': pt_kl_loss,
                 'pretrained_kl_loss_coef': self.pt_kl_coeff,
             },
