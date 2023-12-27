@@ -54,11 +54,15 @@ class CarlaLauncher():
         if self.server is not None:
             logger.info(f'Killing server: {self.port}')
 
-            # kill method doesn't work on windows
+            # kill or terminate methods doesn't work on windows (also this doean't
+            # fix the problem
+            '''
             if os.name == 'nt':
                 subprocess.call(['taskkill', '/F', '/T', '/PID', str(self.server.pid)])
             else:
                 self.server.kill()
+            '''
+            self.server.kill()
 
             time.sleep(self.sleep)
 

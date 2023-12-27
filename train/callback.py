@@ -78,12 +78,12 @@ class NormValueInfoCallback(LogInfoCallback):
 
         with torch.no_grad():
             policy.mean_vf_target = policy.decay * policy.mean_vf_target + \
-                (1 - policy.decay) * np.mean(postprocessed_batch[SampleBatch.VF_PREDS])
+                (1 - policy.decay) * np.mean(postprocessed_batch["value_targets"])
             policy.var_vf_target = policy.decay * policy.var_vf_target + \
-                (1 - policy.decay) * np.var(postprocessed_batch[SampleBatch.VF_PREDS])
+                (1 - policy.decay) * np.var(postprocessed_batch["value_targets"])
 
-            postprocessed_batch[SampleBatch.VF_PREDS] = \
-             (postprocessed_batch[SampleBatch.VF_PREDS] - policy.mean_vf_target) / (policy.var_vf_target + 1e-8)
+            postprocessed_batch["value_targets"] = \
+             (postprocessed_batch["value_targets"] - policy.mean_vf_target) / (policy.var_vf_target + 1e-8)
 
         episode.custom_metrics['mean_vf_target'] = policy.mean_vf_target
         episode.custom_metrics['var_vf_target'] = policy.var_vf_target

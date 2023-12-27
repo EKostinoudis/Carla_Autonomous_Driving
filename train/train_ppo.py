@@ -13,7 +13,11 @@ from ray.rllib.models import ModelCatalog
 
 from train.utils import get_config_path, update_to_abspath
 from train.callback import LogInfoCallback, NormValueInfoCallback
-from train.rllib_trainers import PPOTorchLearnerClearCache, PPOTorchLearnerPretrainedKLLoss
+from train.rllib_trainers import (
+    PPOTorchLearnerClearCache,
+    PPOTorchLearnerPretrainedKLLoss,
+    PPOTorchLearnerPretrainedKLLoss,
+)
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
 from models.CILv2_multiview import g_conf, merge_with_yaml
@@ -80,8 +84,12 @@ def main(args):
     output_distribution = conf.get('output_distribution', 'gaussian')
 
     use_pretrained_kl_loss = conf.get('use_pretrained_kl_loss', False)
+    use_double_clip_loss = conf.get('use_double_clip_loss', False)
     if use_pretrained_kl_loss:
         trainer = PPOTorchLearnerPretrainedKLLoss
+        rl_module = CILv2_RLModule_PT_Policy
+    elif use_double_clip_loss:
+        trainer = PPOTorchLearnerDoubleClip
         rl_module = CILv2_RLModule_PT_Policy
     else:
         trainer = PPOTorchLearnerClearCache
