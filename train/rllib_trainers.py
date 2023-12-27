@@ -11,6 +11,7 @@ from ray.rllib.core.learner.learner import POLICY_LOSS_KEY, VF_LOSS_KEY, ENTROPY
 from ray.rllib.utils.torch_utils import explained_variance
 from ray.rllib.algorithms.ppo.ppo_learner import (
     LEARNER_RESULTS_KL_KEY,
+    LEARNER_RESULTS_CURR_KL_COEFF_KEY,
     LEARNER_RESULTS_VF_EXPLAINED_VAR_KEY,
     LEARNER_RESULTS_VF_LOSS_UNCLIPPED_KEY,
     PPOLearner,
@@ -269,10 +270,9 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
 
         sampled_kl = sampled_kl_values[module_id]
         curr_var = self.curr_kl_coeffs_per_module[module_id]
-        if sampled_kl > 2.0 * self.hps.kl_target:
-            # TODO (Kourosh) why not 2?
-            curr_var.data *= 1.5
-        elif sampled_kl < 0.5 * self.hps.kl_target:
+        if sampled_kl > 1.5 * self.hps.kl_target:
+            curr_var.data *= 2.0
+        elif sampled_kl < 0.667 * self.hps.kl_target:
             curr_var.data *= 0.5
         results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
 
