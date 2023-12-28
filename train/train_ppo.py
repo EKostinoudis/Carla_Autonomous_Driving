@@ -18,6 +18,7 @@ from train.rllib_trainers import (
     PPOTorchLearnerPretrainedKLLoss,
     PPOTorchLearnerDoubleClip,
     PPOTorchLearnerPretrainedKLLossScaled,
+    PPOTorchLearnerPretrainedL1Loss,
 )
 
 from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stack
@@ -87,6 +88,7 @@ def main(args):
     use_pretrained_kl_loss = conf.get('use_pretrained_kl_loss', False)
     use_pretrained_scaled_kl_loss = conf.get('use_pretrained_scaled_kl_loss', False)
     use_double_clip_loss = conf.get('use_double_clip_loss', False)
+    use_pretrained_l1_loss = conf.get('use_pretrained_l1_loss', False)
     if use_pretrained_kl_loss:
         trainer = PPOTorchLearnerPretrainedKLLoss
         rl_module = CILv2_RLModule_PT_Policy
@@ -96,8 +98,11 @@ def main(args):
     elif use_double_clip_loss:
         trainer = PPOTorchLearnerDoubleClip
         rl_module = CILv2_RLModule_PT_Policy
+    elif use_pretrained_l1_loss:
+        trainer = PPOTorchLearnerDoubleClip
+        rl_module = CILv2_RLModule_PT_Policy
     else:
-        trainer = PPOTorchLearnerClearCache
+        trainer = PPOTorchLearnerPretrainedL1Loss
         rl_module = CILv2_RLModule
 
     # callback

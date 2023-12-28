@@ -18,6 +18,9 @@ use_pretrained_scaled_kl_loss: false
 
 # use 2 clip losses, the normal one and one using the pretrained model (works only with RLModule)
 use_double_clip_loss: false
+
+# calculate the l1 loss of the pretrained policy and the current (works only with RLModule)
+use_pretrained_l1_loss: false
 ########################################################################################
 
 # use CILv2_vec_env instead of CILv2_env
