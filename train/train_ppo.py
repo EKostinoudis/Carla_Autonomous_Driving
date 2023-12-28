@@ -99,10 +99,10 @@ def main(args):
         trainer = PPOTorchLearnerDoubleClip
         rl_module = CILv2_RLModule_PT_Policy
     elif use_pretrained_l1_loss:
-        trainer = PPOTorchLearnerDoubleClip
+        trainer = PPOTorchLearnerPretrainedL1Loss
         rl_module = CILv2_RLModule_PT_Policy
     else:
-        trainer = PPOTorchLearnerPretrainedL1Loss
+        trainer = PPOTorchLearnerClearCache
         rl_module = CILv2_RLModule
 
     # callback
