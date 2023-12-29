@@ -482,7 +482,7 @@ class PPOTorchLearnerPretrainedL1Loss(PPOLearner, TorchLearner):
         # pretrained l1 loss
         curr_pred = curr_action_dist.rsample()
         pt_pred = torch.clamp(pt_action_dist.rsample(), -1., 1.)
-        l1_loss = torch.abs(curr_pred - pt_pred) * self.pt_l1_coeff
+        l1_loss = possibly_masked_mean(torch.abs(curr_pred - pt_pred)) * self.pt_l1_coeff
 
         total_loss = possibly_masked_mean(
             -surrogate_loss
