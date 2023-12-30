@@ -196,7 +196,7 @@ class CILv2_sub_env(gym.Env):
 
             state = self.observation_space.sample() 
             reward = 0.
-            terminated = True
+            terminated = False
             truncated = True
             info = {}
         return state, reward, terminated, truncated, info
