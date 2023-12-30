@@ -142,7 +142,7 @@ def main(args):
             num_workers = 0
         else:
             num_workers = 1
-    elif conf.get('use_vec_env', False): 
+    elif conf.get('use_sub_env', False): 
         env_name = 'CILv2_sub_env'
 
     tune.register_env(

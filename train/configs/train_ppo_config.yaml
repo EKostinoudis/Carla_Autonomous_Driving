@@ -27,7 +27,7 @@ use_pretrained_l1_loss: false
 use_vec_env: false
 
 # use CILv2_sub_env (runs the environment in a subprocess environment)
-use_vec_env: true
+use_sub_env: true
 
 no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
 

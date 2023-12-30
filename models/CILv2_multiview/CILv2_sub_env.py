@@ -71,13 +71,6 @@ def connect_to_port(port, timeout=5):
 
 
 class EnvWrapper():
-    '''
-    def __init__(self, conn, process: Process, observation_space, actions_space):
-        self.conn = conn
-        self.process = process
-        self.observation_space = observation_space
-        self.action_space = actions_space
-    '''
     def __init__(self, port, process):
         # connect to the processes
         self.conn = connect_to_port(port)
@@ -113,7 +106,7 @@ class CILv2_sub_env(gym.Env):
                  rllib_config: Optional[EnvContext] = None,
                  ):
         use_launcher = env_config.get('use_carla_launcher', False)
-        self.port = env_config.get('port', 2000) + 4*offset
+        self.port = env_config.get('port', 2000)
 
         # update the env for the environment
         if rllib_config is not None:
