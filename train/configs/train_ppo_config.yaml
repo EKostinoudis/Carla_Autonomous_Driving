@@ -23,8 +23,12 @@ use_double_clip_loss: false
 use_pretrained_l1_loss: false
 ########################################################################################
 
-# use CILv2_vec_env instead of CILv2_env
+# use CILv2_vec_env (vector environment)
+use_vec_env: false
+
+# use CILv2_sub_env (runs the environment in a subprocess environment)
 use_vec_env: true
+
 no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
 
 # file to a checkpoint from which we start the training

@@ -138,7 +138,7 @@ class CILv2_env(gym.Env):
 
     def restart_env(self):
         # kill carla server if it exists
-        if self.env is not None and self.env.carla_launcer is not None: self.env.carla_launcer.kill()
+        if self.env is not None and self.env.carla_launcher is not None: self.env.carla_launcher.kill()
 
         while True:
             try:

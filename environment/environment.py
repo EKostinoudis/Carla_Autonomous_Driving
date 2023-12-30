@@ -37,18 +37,18 @@ class Environment(gym.Env):
         self.sensors_config = config.sensors
 
         self.restart_server = False
-        self.use_launcer = config.get('use_carla_launcer', False)
-        if self.use_launcer:
+        self.use_launcher = config.get('use_carla_launcher', False)
+        if self.use_launcher:
             launch_script = config.get('carla_launch_script', None)
             if launch_script is None:
                 raise ValueError('Must provide "carla_launch_script" in the environment config')
-            self.carla_launcer = CarlaLauncher(
+            self.carla_launcher = CarlaLauncher(
                 config.get('port', 2000),
                 launch_script,
                 config.get('carla_restart_after', -1),
             )
         else:
-            self.carla_launcer = None
+            self.carla_launcher = None
 
         # create world handler
         self.world_handler = WorldHandler(config)
@@ -120,8 +120,8 @@ class Environment(gym.Env):
         self.destroy_sensors()
 
         # if needed restart the carla server (mainly to avoid memory leaks)
-        if self.carla_launcer is not None:
-            self.carla_launcer.reset(restart_server=self.restart_server)
+        if self.carla_launcher is not None:
+            self.carla_launcher.reset(restart_server=self.restart_server)
             self.restart_server = False
 
         # reset the world and get the new vehicle
@@ -246,7 +246,7 @@ class Environment(gym.Env):
 
         self.world_handler.close()
 
-        if self.carla_launcer is not None: self.carla_launcer.kill()
+        if self.carla_launcher is not None: self.carla_launcher.kill()
 
     def apply_action(self, action):
         self.vehicle_control.throttle = action[0]

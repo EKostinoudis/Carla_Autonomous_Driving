@@ -28,7 +28,7 @@ def handle_env(env_config: DictConfig | dict, path_to_conf_file: str):
 
     env = CILv2_env(env_config, path_to_conf_file)
 
-    # senc the observation_space and action_space
+    # sent the observation_space and action_space
     conn.send((env.observation_space, env.action_space))
 
     while True:

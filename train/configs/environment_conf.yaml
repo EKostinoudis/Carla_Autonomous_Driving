@@ -29,7 +29,7 @@ reward_waypoint: 0.5
 #
 # for the carla server
 #
-use_carla_launcer: true # if true launch the server in the environment
+use_carla_launcher: true # if true launch the server in the environment
 
 # command to launch the carla server, takes the port as first argument
 carla_launch_script: "bash launch_carla_server.sh"

@@ -25,6 +25,7 @@ from models.CILv2_multiview import CIL_multiview_rllib, CIL_multiview_rllib_stac
 from models.CILv2_multiview import g_conf, merge_with_yaml
 from models.CILv2_multiview.CILv2_env import CILv2_env
 from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
+from models.CILv2_multiview.CILv2_sub_env import CILv2_sub_env
 from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule, CILv2_RLModule_PT_Policy
 
 from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
@@ -141,6 +142,8 @@ def main(args):
             num_workers = 0
         else:
             num_workers = 1
+    elif conf.get('use_vec_env', False): 
+        env_name = 'CILv2_sub_env'
 
     tune.register_env(
         'CILv2_env',
@@ -149,6 +152,10 @@ def main(args):
     tune.register_env(
         'CILv2_vec_env',
         lambda rllib_conf: CILv2_vec_env(env_conf, path_to_conf, rllib_conf),
+    )
+    tune.register_env(
+        'CILv2_sub_env',
+        lambda rllib_conf: CILv2_sub_env(env_conf, path_to_conf, rllib_conf),
     )
 
     # update g_conf
