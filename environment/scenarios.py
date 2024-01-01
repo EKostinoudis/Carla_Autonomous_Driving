@@ -253,15 +253,12 @@ class ScenarioRunner():
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
-        self._set_asynchronous()
-
-        self.world = self.client.load_world(town)
-        self.world = self.client.get_world()
-
         self._set_synchronous_world()
+        self.world = self.client.load_world(town)
+        self._set_synchronous_world()
+        self.world.tick()
 
         CarlaDataProvider.set_world(self.world)
-
         self.world.tick()
 
     def _get_scenario_class_or_fail(self, scenario):

@@ -170,7 +170,7 @@ class WorldHandler():
             trajectory = self.scenario_runner.trajectory
         else:
             # reload the world
-            self.asynchronous()
+            self.synchronous()
             self.client.reload_world(True)
             self.synchronous()
 
