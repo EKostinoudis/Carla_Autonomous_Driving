@@ -7,6 +7,9 @@ model: CIL_multiview_rllib
 # the distribution to use for the policy, options: gaussian, beta
 output_distribution: gaussian
 
+# do not share weights between policy and value networks
+use_separate_vf: false
+
 ########################################################################################
 # Choose only one from the below (if more than one selection the order here is followed)
 

@@ -1,5 +1,6 @@
 from typing import Mapping, Any
 import torch
+from copy import deepcopy
 
 from ray.rllib.algorithms.ppo.ppo_rl_module import PPORLModule
 
@@ -10,11 +11,21 @@ from ray.rllib.models.modelv2 import restore_original_dimensions
 from ray.rllib.models.torch.torch_distributions import TorchDiagGaussian
 
 from .beta_distribution import TorchBetaDistribution
-from .network.models.architectures.CIL_multiview.CIL_multiview_rllib import CIL_multiview_actor_critic_RLModule
+from .network.models.architectures.CIL_multiview.CIL_multiview_rllib import (
+    CIL_multiview_actor_critic_RLModule,
+    CIL_multiview_actor_critic_sep_RLModule,
+)
+
+def get_model(model_config):
+    if model_config.get('use_separate_vf', False):
+        return CIL_multiview_actor_critic_sep_RLModule
+    else:
+        return CIL_multiview_actor_critic_RLModule
 
 class CILv2_RLModule(TorchRLModule, PPORLModule):
     def setup(self):
-        self.model = CIL_multiview_actor_critic_RLModule(self.config.model_config_dict)
+        model_type = get_model(self.config.model_config_dict)
+        self.model = model_type(self.config.model_config_dict)
 
         # for now we use the model config for passing the distribution, the
         # proper way is the catalog class
@@ -67,9 +78,12 @@ class CILv2_RLModule(TorchRLModule, PPORLModule):
 class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
     ''' RLModule that calculated the pretrained action dist at exploration '''
     def setup(self):
-        self.model = CIL_multiview_actor_critic_RLModule(self.config.model_config_dict)
+        model_type = get_model(self.config.model_config_dict)
+        self.model = model_type(self.config.model_config_dict)
 
         # fixed pretrained model
+        pt_config = deepcopy(self.config.model_config_dict)
+        pt_config.update({'use_vf': False})
         self.pt_model = [CIL_multiview_actor_critic_RLModule(
             self.config.model_config_dict).requires_grad_(False)]
         self.pt_model_device_set = False

@@ -85,6 +85,7 @@ def main(args):
     use_rl_module = conf.get('use_rl_module', False)
 
     output_distribution = conf.get('output_distribution', 'gaussian')
+    use_separate_vf = conf.get('use_separate_vf', False)
 
     use_pretrained_kl_loss = conf.get('use_pretrained_kl_loss', False)
     use_pretrained_scaled_kl_loss = conf.get('use_pretrained_scaled_kl_loss', False)
@@ -195,6 +196,7 @@ def main(args):
                     'checkpoint': checkpoint_file,
                     'pretrain_value': pretrain_value,
                     'output_distribution': output_distribution,
+                    'use_separate_vf': use_separate_vf,
                 },
             }
 
@@ -286,6 +288,7 @@ def main(args):
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
                 'output_distribution': output_distribution,
+                'use_separate_vf': use_separate_vf,
             },
         }
 
