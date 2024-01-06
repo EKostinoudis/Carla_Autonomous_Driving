@@ -14,11 +14,14 @@ from .beta_distribution import TorchBetaDistribution
 from .network.models.architectures.CIL_multiview.CIL_multiview_rllib import (
     CIL_multiview_actor_critic_RLModule,
     CIL_multiview_actor_critic_sep_RLModule,
+    CIL_multiview_actor_critic_stack_RLModule,
 )
 
 def get_model(model_config):
     if model_config.get('use_separate_vf', False):
         return CIL_multiview_actor_critic_sep_RLModule
+    elif model_config.get('use_stacked_model', False):
+        return CIL_multiview_actor_critic_stack_RLModule
     else:
         return CIL_multiview_actor_critic_RLModule
 
