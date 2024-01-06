@@ -182,6 +182,9 @@ def main(args):
                     'g_conf': g_conf,
                     'checkpoint': checkpoint_file,
                     'pretrain_value': pretrain_value,
+                    'output_distribution': output_distribution,
+                    'use_separate_vf': use_separate_vf,
+                    'use_stacked_model': use_stacked_model,
                 },
             )
             _enable_rl_module_api = True
@@ -199,9 +202,6 @@ def main(args):
                     'g_conf': g_conf,
                     'checkpoint': checkpoint_file,
                     'pretrain_value': pretrain_value,
-                    'output_distribution': output_distribution,
-                    'use_separate_vf': use_separate_vf,
-                    'use_stacked_model': use_stacked_model,
                 },
             }
 
@@ -275,6 +275,9 @@ def main(args):
                 'g_conf': g_conf,
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
+                'output_distribution': output_distribution,
+                'use_separate_vf': use_separate_vf,
+                'use_stacked_model': use_stacked_model,
             },
         )
         _enable_rl_module_api = True
@@ -292,9 +295,6 @@ def main(args):
                 'g_conf': g_conf,
                 'checkpoint': checkpoint_file,
                 'pretrain_value': False,
-                'output_distribution': output_distribution,
-                'use_separate_vf': use_separate_vf,
-                'use_stacked_model': use_stacked_model,
             },
         }
 
