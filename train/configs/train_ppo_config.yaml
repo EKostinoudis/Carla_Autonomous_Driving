@@ -7,11 +7,18 @@ model: CIL_multiview_rllib
 # the distribution to use for the policy, options: gaussian, beta
 output_distribution: gaussian
 
+########################################################################################
+# Choose only one (or none) from the below (if more than one selection the order here is followed)
+
 # do not share weights between policy and value networks
 use_separate_vf: false
 
+# use the pretrained model as feature extractor
+use_stacked_model: false
 ########################################################################################
-# Choose only one from the below (if more than one selection the order here is followed)
+
+########################################################################################
+# Choose only one (or none) from the below (if more than one selection the order here is followed)
 
 # calculate the kl loss of the pretrained policy and the current (works only with RLModule)
 use_pretrained_kl_loss: true

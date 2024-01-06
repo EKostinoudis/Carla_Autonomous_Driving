@@ -261,8 +261,8 @@ class CIL_multiview_actor_critic_stack(nn.Module):
 
         self.action_output2 = FC(params={'neurons': 
                                             [self.params['action_output']['fc']['neurons'][-1] + 2] +
-                                            [128, 4],
-                                 'dropouts': 2*[0.0],
+                                            [512, 512, 4],
+                                 'dropouts': 3*[0.0],
                                  'end_layer': True})
 
         # critic output (value)
@@ -437,6 +437,13 @@ class CIL_multiview_actor_critic_sep_RLModule(CIL_multiview_actor_critic_sep):
                 checkpoint,
                 map_location=next(self.parameters()).device,
             )['model']
+            common_layers = ['command', 'speed', 'encoder_embedding_perception']
+            for name in common_layers:
+                vf_name = name + '_vf'
+                if not any([key.startswith(vf_name) for key in checkpoint.keys()]):
+                    for k, v in checkpoint.items():
+                        if k.startswith(name):
+                            checkpoint.update({vf_name + k[len(name):]: v})
             self.load_state_dict(checkpoint, strict=False)
 
         # tried to overwrite the trainable_variables method but it didn't work
@@ -454,3 +461,33 @@ class CIL_multiview_actor_critic_sep_RLModule(CIL_multiview_actor_critic_sep):
                 param.requires_grad = True
             for param in self.fc_vf.parameters():
                 param.requires_grad = True
+
+class CIL_multiview_actor_critic_stack_RLModule(CIL_multiview_actor_critic_stack):
+    ''' Wrapper for CIL_multiview_actor_critic_stack in order to be used in RLModule '''
+    def __init__(self, config):
+        CIL_multiview_actor_critic_stack.__init__(self, config['g_conf'])
+        checkpoint = config.get('checkpoint', None)
+        pretrain_value = config.get('pretrain_value', False)
+
+        if checkpoint is not None:
+            checkpoint = torch.load(
+                checkpoint,
+                map_location=next(self.parameters()).device,
+            )['model']
+            self.load_state_dict(checkpoint, strict=False)
+
+        # tried to overwrite the trainable_variables method but it didn't work
+        # this is a workaround
+        if pretrain_value:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.value_output.parameters():
+                param.requires_grad = True
+        else:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.action_output2.parameters():
+                param.requires_grad = True
+            for param in self.value_output.parameters():
+                param.requires_grad = True
+
