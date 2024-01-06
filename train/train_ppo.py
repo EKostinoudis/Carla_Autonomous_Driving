@@ -113,11 +113,14 @@ def main(args):
     else:
         callback = LogInfoCallback
 
+
     extra_params = dict(conf.extra_params)
-    entropy_coeff = extra_params.get('entropy_coeff', None)
-    if entropy_coeff is not None and isinstance(entropy_coeff, ListConfig):
-        entropy_coeff = [tuple(item) for item in entropy_coeff]
-        extra_params['entropy_coeff'] = entropy_coeff
+    list_params = ['lr_schedule', 'entropy_coeff']
+    for list_param in list_params:
+        coeff = extra_params.get(list_param, None)
+        if coeff is not None and isinstance(coeff, ListConfig):
+            coeff = [tuple(item) for item in coeff]
+            extra_params[list_param] = coeff
 
     path_to_conf = conf.path_to_conf
 
