@@ -87,8 +87,8 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         # fixed pretrained model
         pt_config = deepcopy(self.config.model_config_dict)
         pt_config.update({'use_vf': False})
-        self.pt_model = [CIL_multiview_actor_critic_RLModule(
-            self.config.model_config_dict).requires_grad_(False)]
+
+        self.pt_model = [model_type(self.config.model_config_dict).requires_grad_(False)]
         self.pt_model_device_set = False
 
         # for now we use the model config for passing the distribution, the

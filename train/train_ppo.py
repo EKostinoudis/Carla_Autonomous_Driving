@@ -116,7 +116,7 @@ def main(args):
 
 
     extra_params = dict(conf.extra_params)
-    list_params = ['lr_schedule', 'entropy_coeff']
+    list_params = ['lr', 'lr_schedule', 'entropy_coeff']
     for list_param in list_params:
         coeff = extra_params.get(list_param, None)
         if coeff is not None and isinstance(coeff, ListConfig):
