@@ -118,6 +118,15 @@ class PPOTorchLearnerPretrainedKLLoss(PPOLearner, TorchLearner):
             + pt_kl_loss
         )
 
+        if hps.use_kl_loss:
+            prev_action_dist = action_dist_class_exploration.from_logits(
+                batch[SampleBatch.ACTION_DIST_INPUTS]
+            )
+            action_kl = prev_action_dist.kl(curr_action_dist)
+            mean_kl_loss = possibly_masked_mean(action_kl)
+            total_loss += self.curr_kl_coeffs_per_module[module_id] * mean_kl_loss
+            self.register_metrics(module_id, {LEARNER_RESULTS_KL_KEY: mean_kl_loss})
+
         # Register important loss stats.
         self.register_metrics(
             module_id,
@@ -146,6 +155,16 @@ class PPOTorchLearnerPretrainedKLLoss(PPOLearner, TorchLearner):
 
         # update the pretrained kl coefficient
         self.pt_kl_coeff *= self.pt_kl_coeff_decay
+
+        if hps.use_kl_loss:
+            sampled_kl = sampled_kl_values[module_id]
+            curr_var = self.curr_kl_coeffs_per_module[module_id]
+            if sampled_kl > 2.0 * self.hps.kl_target:
+                # TODO (Kourosh) why not 2?
+                curr_var.data *= 1.5
+            elif sampled_kl < 0.5 * self.hps.kl_target:
+                curr_var.data *= 0.5
+            results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
 
         # clear gpu memory cache
         gc.collect()
@@ -238,6 +257,15 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
             + pt_kl_loss
         )
 
+        if hps.use_kl_loss:
+            prev_action_dist = action_dist_class_exploration.from_logits(
+                batch[SampleBatch.ACTION_DIST_INPUTS]
+            )
+            action_kl = prev_action_dist.kl(curr_action_dist)
+            mean_kl_loss = possibly_masked_mean(action_kl)
+            total_loss += self.curr_kl_coeffs_per_module[module_id] * mean_kl_loss
+            self.register_metrics(module_id, {LEARNER_RESULTS_KL_KEY: mean_kl_loss})
+
         # Register important loss stats.
         self.register_metrics(
             module_id,
@@ -249,7 +277,7 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
                     batch[Postprocessing.VALUE_TARGETS], value_fn_out
                 ),
                 ENTROPY_KEY: mean_entropy,
-                LEARNER_RESULTS_KL_KEY: pt_kl,
+                'pretrained_kl_loss': pt_kl,
                 'pretrained_kl_loss_scaled': pt_kl_loss,
                 'pretrained_kl_loss_coef': self.pt_kl_coeff,
             },
@@ -275,6 +303,16 @@ class PPOTorchLearnerPretrainedKLLossScaled(PPOLearner, TorchLearner):
         elif sampled_kl < 0.667 * self.hps.kl_target:
             curr_var.data *= 0.5
         results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
+
+        if hps.use_kl_loss:
+            sampled_kl = sampled_kl_values[module_id]
+            curr_var = self.curr_kl_coeffs_per_module[module_id]
+            if sampled_kl > 2.0 * self.hps.kl_target:
+                # TODO (Kourosh) why not 2?
+                curr_var.data *= 1.5
+            elif sampled_kl < 0.5 * self.hps.kl_target:
+                curr_var.data *= 0.5
+            results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
 
         # clear gpu memory cache
         gc.collect()
@@ -374,6 +412,15 @@ class PPOTorchLearnerDoubleClip(PPOLearner, TorchLearner):
             )
         )
 
+        if hps.use_kl_loss:
+            prev_action_dist = action_dist_class_exploration.from_logits(
+                batch[SampleBatch.ACTION_DIST_INPUTS]
+            )
+            action_kl = prev_action_dist.kl(curr_action_dist)
+            mean_kl_loss = possibly_masked_mean(action_kl)
+            total_loss += self.curr_kl_coeffs_per_module[module_id] * mean_kl_loss
+            self.register_metrics(module_id, {LEARNER_RESULTS_KL_KEY: mean_kl_loss})
+
         # Register important loss stats.
         self.register_metrics(
             module_id,
@@ -402,6 +449,16 @@ class PPOTorchLearnerDoubleClip(PPOLearner, TorchLearner):
 
         # update the pretrained clip coefficient
         self.pt_clip_coeff *= self.pt_clip_coeff_decay
+
+        if hps.use_kl_loss:
+            sampled_kl = sampled_kl_values[module_id]
+            curr_var = self.curr_kl_coeffs_per_module[module_id]
+            if sampled_kl > 2.0 * self.hps.kl_target:
+                # TODO (Kourosh) why not 2?
+                curr_var.data *= 1.5
+            elif sampled_kl < 0.5 * self.hps.kl_target:
+                curr_var.data *= 0.5
+            results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
 
         # clear gpu memory cache
         gc.collect()
@@ -494,6 +551,15 @@ class PPOTorchLearnerPretrainedL1Loss(PPOLearner, TorchLearner):
             + l1_loss
         )
 
+        if hps.use_kl_loss:
+            prev_action_dist = action_dist_class_exploration.from_logits(
+                batch[SampleBatch.ACTION_DIST_INPUTS]
+            )
+            action_kl = prev_action_dist.kl(curr_action_dist)
+            mean_kl_loss = possibly_masked_mean(action_kl)
+            total_loss += self.curr_kl_coeffs_per_module[module_id] * mean_kl_loss
+            self.register_metrics(module_id, {LEARNER_RESULTS_KL_KEY: mean_kl_loss})
+
         # Register important loss stats.
         self.register_metrics(
             module_id,
@@ -522,6 +588,16 @@ class PPOTorchLearnerPretrainedL1Loss(PPOLearner, TorchLearner):
 
         # update the pretrained l1 coefficient
         self.pt_l1_coeff *= self.pt_l1_coeff_decay
+
+        if hps.use_kl_loss:
+            sampled_kl = sampled_kl_values[module_id]
+            curr_var = self.curr_kl_coeffs_per_module[module_id]
+            if sampled_kl > 2.0 * self.hps.kl_target:
+                # TODO (Kourosh) why not 2?
+                curr_var.data *= 1.5
+            elif sampled_kl < 0.5 * self.hps.kl_target:
+                curr_var.data *= 0.5
+            results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
 
         # clear gpu memory cache
         gc.collect()

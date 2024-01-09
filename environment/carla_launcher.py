@@ -2,7 +2,7 @@ import subprocess
 import time
 import logging
 import carla
-import os
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +55,10 @@ class CarlaLauncher():
         if self.server is not None:
             logger.info(f'Killing server: {self.port}')
 
-            # kill or terminate methods doesn't work on windows (also this doean't
-            # fix the problem
-            '''
-            if os.name == 'nt':
-                subprocess.call(['taskkill', '/F', '/T', '/PID', str(self.server.pid)])
-            else:
-                self.server.kill()
-            '''
-            self.server.kill()
+            parent = psutil.Process(self.server.pid)
+            for child in parent.children(recursive=True):
+                child.kill()
+            parent.kill()
 
             time.sleep(self.sleep)
 

@@ -129,7 +129,7 @@ class WorldHandler():
             if self.map is not None:
                 # load world if given
                 logger.info(f'Loading map: {self.map}')
-                self.asynchronous()
+                # self.asynchronous()
                 world = self.client.load_world(self.map)
 
             self.world = self.client.get_world()
