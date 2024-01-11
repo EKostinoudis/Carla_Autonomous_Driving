@@ -142,7 +142,6 @@ class CILv2_sub_env(gym.Env):
         self.port = 0
         self.env_config = env_config
         self.path_to_conf_file = path_to_conf_file
-        self.update_port()
 
         use_launcher = env_config.get('use_carla_launcher', False)
 
@@ -169,6 +168,7 @@ class CILv2_sub_env(gym.Env):
         else:
             self.carla_launcher = None
 
+        self.update_port()
         self.restart_env()
 
     def update_port(self):
