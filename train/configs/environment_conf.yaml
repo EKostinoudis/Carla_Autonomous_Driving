@@ -32,7 +32,9 @@ reward_waypoint: 0.5
 use_carla_launcher: true # if true launch the server in the environment
 
 # command to launch the carla server, takes the port as first argument
+# and (maybe) the device as second
 carla_launch_script: "bash launch_carla_server.sh"
+num_devices: 1 # number of gpus (in order to pass to the launch script)
 carla_restart_after: 10 # amount of resets to restart the server
 ip: localhost
 port: 2000

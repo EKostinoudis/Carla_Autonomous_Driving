@@ -137,6 +137,7 @@ class CILv2_sub_env(gym.Env):
         # this is important in order for the multiprocessing to work
         set_start_method('spawn', force=True)
 
+        self.device = None
         self.env = None
         self.env_proc = None
         self.port = 0
@@ -149,6 +150,7 @@ class CILv2_sub_env(gym.Env):
         if rllib_config is not None:
             offset = rllib_config.worker_index - 1
             seed = env_config.get('seed', random.randint(0, 10000)) + offset
+            self.device = offset % env_config.get('num_devices', 1)
             self.env_config.update({
                 'seed': seed,
                 'use_carla_launcher': False,
@@ -164,6 +166,7 @@ class CILv2_sub_env(gym.Env):
                 launch_script,
                 self.env_config.get('carla_restart_after', -1),
                 launch_on_init=False,
+                device=self.device,
             )
         else:
             self.carla_launcher = None
