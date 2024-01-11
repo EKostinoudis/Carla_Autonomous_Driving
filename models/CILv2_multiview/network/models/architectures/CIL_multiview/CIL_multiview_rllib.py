@@ -439,11 +439,12 @@ class CIL_multiview_actor_critic_sep_RLModule(CIL_multiview_actor_critic_sep):
                 checkpoint,
                 map_location=next(self.parameters()).device,
             )['model']
+            checkpoint_cp = checkpoint_cp.copy()
             common_layers = ['command', 'speed', 'encoder_embedding_perception']
             for name in common_layers:
                 vf_name = name + '_vf'
-                if not any([key.startswith(vf_name) for key in checkpoint.keys()]):
-                    for k, v in checkpoint.items():
+                if not any([key.startswith(vf_name) for key in checkpoint_cp.keys()]):
+                    for k, v in checkpoint_cp.items():
                         if k.startswith(name):
                             checkpoint.update({vf_name + k[len(name):]: v})
             self.load_state_dict(checkpoint, strict=False)
