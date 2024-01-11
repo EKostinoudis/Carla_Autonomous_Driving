@@ -190,10 +190,12 @@ class CIL_multiview_actor_critic_sep(nn.Module):
 
         if self.use_vf:
             # Value calculation start
+            e_p_vf, _ = self.encoder_embedding_perception_vf(x)
+            encoded_obs_vf = e_p_vf.view(B, S*len(self.g_conf['DATA_USED']), self.res_out_dim, self.res_out_h*self.res_out_w)  # [B, S*cam, dim, h*w]
             self._value_out = self.fc_vf(
                 torch.cat(
                     [
-                        self.embedding_subsample(encoded_obs),
+                        self.embedding_subsample(encoded_obs_vf),
                         self.command_vf(d),
                         self.speed_vf(s),
                      ],
