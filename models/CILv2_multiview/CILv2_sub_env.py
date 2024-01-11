@@ -4,14 +4,15 @@ import random
 from omegaconf import DictConfig
 from typing import Optional
 from multiprocessing.connection import Listener, Client
-from multiprocessing import Process
+from multiprocessing import Process, set_start_method
 from enum import Enum
 import time
 import gymnasium as gym
 import logging
 import traceback
+import socket
+from contextlib import closing
 
-from ray.rllib.env.vector_env import VectorEnv
 from ray.rllib.env.env_context import EnvContext
 
 from .CILv2_env import CILv2_env
@@ -99,64 +100,102 @@ class EnvWrapper():
         self.process.join()
         self.process.close()
 
+def find_free_port():
+    while True:
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('localhost', 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            port = s.getsockname()[1]
+            if port > 4000:
+                return port
+
+def find_free_port4():
+    while True:
+        try:
+            temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            temp_socket.bind(('localhost', 0))
+            _, port = temp_socket.getsockname()
+            temp_socket.close()
+
+            port = (port // 4) * 4
+            for i in range(4):
+                temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                temp_socket.bind(('localhost', port+i))
+                temp_socket.close()
+        except OSError:
+            continue
+        else:
+            return port
+
+
 class CILv2_sub_env(gym.Env):
     def __init__(self,
                  env_config: DictConfig | dict,
                  path_to_conf_file: str,
                  rllib_config: Optional[EnvContext] = None,
                  ):
+        # this is important in order for the multiprocessing to work
+        set_start_method('spawn', force=True)
+
+        self.env = None
+        self.env_proc = None
+        self.port = 0
+        self.env_config = env_config
+        self.path_to_conf_file = path_to_conf_file
+        self.update_port()
+
         use_launcher = env_config.get('use_carla_launcher', False)
-        self.port = env_config.get('port', 2000)
 
         # update the env for the environment
         if rllib_config is not None:
             offset = rllib_config.worker_index - 1
             seed = env_config.get('seed', random.randint(0, 10000)) + offset
-            port = env_config.get('port', 2000) + 4*offset
-            tm_port = env_config.get('tm_port', 8000) + offset
-            env_config.update({
-                'port': port,
-                'tm_port': tm_port,
+            self.env_config.update({
                 'seed': seed,
                 'use_carla_launcher': False,
             })
-            self.port = port
-        self.env_config = env_config
-        self.path_to_conf_file = path_to_conf_file
 
         # create the carla launcher if needed
         if use_launcher:
-            launch_script = env_config.get('carla_launch_script', None)
+            launch_script = self.env_config.get('carla_launch_script', None)
             if launch_script is None:
                 raise ValueError('Must provide "carla_launch_script" in the environment config')
             self.carla_launcher = CarlaLauncher(
-                env_config.get('port', 2000),
+                self.env_config.get('port', 2000),
                 launch_script,
-                env_config.get('carla_restart_after', -1),
+                self.env_config.get('carla_restart_after', -1),
                 launch_on_init=False,
             )
         else:
             self.carla_launcher = None
 
-        self.port += 3
-        self.env = None
-        self.env_proc = None
-
         self.restart_env()
+
+    def update_port(self):
+        # update the traffic manager port
+        self.env_config.update({'tm_port': find_free_port()})
+
+        # update the server and communication port
+        self.port = find_free_port4()
+        self.env_config.update({'port': self.port})
+        self.carla_launcher.update_port(self.port)
+        self.port += 3
 
     def restart_env(self):
         if self.carla_launcher is not None: self.carla_launcher.lauch()
 
-        while True:
+        # try to restart 10 times, else let is crash
+        for i in range(10):
             try:
                 if self.env_proc is not None: self.env_proc.kill()
                 try:
                     if self.env is not None: self.env.close()
                 except Exception as e:
-                    logger.warning(f'Restart env: env wrapper close: Got exception: {e}')
+                    logger.warning(f'{i}: Restart env: env wrapper close: Got exception: {e}')
                     logger.warning(traceback.format_exc())
                 self.env = None
 
+                self.env_config.update({'tm_port': find_free_port()})
                 self.env_proc = Process(
                     target=handle_env,
                     args=(self.env_config, self.path_to_conf_file),
@@ -166,20 +205,18 @@ class CILv2_sub_env(gym.Env):
                 self.observation_space = self.env.observation_space
                 self.action_space = self.env.action_space
             except Exception as e:
-                logger.warning(f'Restart env: Got exception: {e}')
+                logger.warning(f'{i}: Restart env: Got exception: {e}')
                 logger.warning(traceback.format_exc())
             else:
                 break
 
-
     def reset(self, *, seed=None, options=None):
-        while True:
+        for i in range(10):
             try:
                 state, info = self.env.reset(seed=seed, options=options)
             except Exception as e:
-                logger.warning(f'Reset: Got exception: {e}')
+                logger.warning(f'R{i}: eset: Got exception: {e}')
                 logger.warning(traceback.format_exc())
-                # self.env.restart_server = True
                 self.restart_env()
             else:
                 break

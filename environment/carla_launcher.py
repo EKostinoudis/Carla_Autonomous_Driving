@@ -7,15 +7,21 @@ import psutil
 logger = logging.getLogger(__name__)
 
 class CarlaLauncher():
-    def __init__(self, port, launch_script, restart_after=-1, sleep=10., launch_on_init=True):
+    def __init__(self, port, launch_script, restart_after=-1, sleep=10., launch_on_init=True, device=None):
         '''
         port: The port of carla server
         launch_script: A script that takes as argument the port and launches the
             carla server
         restart_after: restart the server after every given value, if it is 
             negative never restart
+        sleep: time in seconds to sleep
+        launch_on_init: if true, lanches the server in the init
+        device: the device (gpu) to pass to the launch script
         '''
-        self.launch_script = launch_script + f' {port}'
+        self.device = device
+        self.launch_script_base = launch_script
+        self.update_port(port)
+
         self.restart_after = restart_after
         self.sleep = sleep
         self.server = None
@@ -24,11 +30,6 @@ class CarlaLauncher():
 
         if launch_on_init:
             self.lauch()
-
-        # TODO: maybe try to connect to the server and set it on sync mode, in
-        #       order to avoid this sleep
-        # extra sleep time for the cold start, also we may lauch many servers
-        # time.sleep(self.sleep * 10)
 
     def reset(self, restart_server=False):
         if self.restart_after >= 0 or restart_server:
@@ -61,6 +62,13 @@ class CarlaLauncher():
             parent.kill()
 
             time.sleep(self.sleep)
+
+    def update_port(self, port):
+        self.launch_script = self.launch_script_base + f' {port}'
+        if self.device is not None:
+            self.launch_script += f' {self.device}'
+        self.port = port
+
 
     def set_synchronous_mode(self, client, synchronous_mode=True, delta_seconds=0.1):
         settings = client.get_world().get_settings()

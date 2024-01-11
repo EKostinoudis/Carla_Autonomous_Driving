@@ -92,16 +92,7 @@ class CILv2_env(gym.Env):
     def reset(self, *, seed=None, options=None):
         self.input_data = None
 
-        while True:
-            try:
-                state, info = self.env.reset(seed=seed, options=options)
-            except Exception as e:
-                logger.warning(f'Reset: Got exception: {e}')
-                logger.warning(traceback.format_exc())
-                # self.env.restart_server = True
-                self.restart_env()
-            else:
-                break
+        state, info = self.env.reset(seed=seed, options=options)
 
         self.input_data = state
         state = self.run_step()
@@ -116,20 +107,7 @@ class CILv2_env(gym.Env):
         throttle = float(throttle)
         brake = float(brake)
 
-        try:
-            state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
-        except Exception as e:
-            logger.warning(f'Step: Got exception: {e}')
-            logger.warning(traceback.format_exc())
-            # self.env.restart_server = True
-
-            self.restart_env()
-
-            state = self.observation_space.sample() 
-            reward = 0.
-            terminated = True
-            truncated = True
-            info = {}
+        state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
 
         self.input_data = state
         state = self.run_step()
@@ -140,14 +118,7 @@ class CILv2_env(gym.Env):
         # kill carla server if it exists
         if self.env is not None and self.env.carla_launcher is not None: self.env.carla_launcher.kill()
 
-        while True:
-            try:
-                self.env = Environment(self.env_config)
-            except Exception as e:
-                logger.warning(f'Restart env: Got exception: {e}')
-                logger.warning(traceback.format_exc())
-            else:
-                break
+        self.env = Environment(self.env_config)
 
     def run_step(self):
         self.norm_rgb = torch.stack(
