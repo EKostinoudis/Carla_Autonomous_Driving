@@ -439,7 +439,7 @@ class CIL_multiview_actor_critic_sep_RLModule(CIL_multiview_actor_critic_sep):
                 checkpoint,
                 map_location=next(self.parameters()).device,
             )['model']
-            checkpoint_cp = checkpoint_cp.copy()
+            checkpoint_cp = checkpoint.copy()
             common_layers = ['command', 'speed', 'encoder_embedding_perception']
             for name in common_layers:
                 vf_name = name + '_vf'
