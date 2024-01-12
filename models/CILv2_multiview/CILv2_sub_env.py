@@ -185,11 +185,10 @@ class CILv2_sub_env(gym.Env):
         self.port += 3
 
     def restart_env(self):
-        if self.carla_launcher is not None: self.carla_launcher.lauch()
-
         # try to restart 10 times, else let is crash
         for i in range(10):
             try:
+                if self.carla_launcher is not None: self.carla_launcher.lauch()
                 if self.env_proc is not None: self.env_proc.kill()
                 try:
                     if self.env is not None: self.env.close()
