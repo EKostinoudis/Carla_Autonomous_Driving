@@ -62,6 +62,7 @@ class NormValueInfoCallback(LogInfoCallback):
         policy.var_vf_target = 1.
         policy.decay = 0.9
 
+    '''
     def on_episode_start(
         self,
         *,
@@ -80,8 +81,7 @@ class NormValueInfoCallback(LogInfoCallback):
             env_index=env_index,
             **kwargs,
         )
-        worker.mean_vf_target = policies['default_policy'].mean_vf_target
-        worker.var_vf_target = policies['default_policy'].var_vf_target
+    '''
 
     def on_episode_step(
         self,
@@ -101,6 +101,15 @@ class NormValueInfoCallback(LogInfoCallback):
             env_index=env_index,
             **kwargs,
         )
+        if hasattr(worker, 'after_end_sample'):
+            if worker.after_end_sample:
+                worker.mean_vf_target = policies['default_policy'].mean_vf_target
+                worker.var_vf_target = policies['default_policy'].var_vf_target
+                worker.after_end_sample = False
+        else:
+            if not hasattr(worker, 'mean_vf_target'):
+                worker.mean_vf_target = policies['default_policy'].mean_vf_target
+                worker.var_vf_target = policies['default_policy'].var_vf_target
 
         list_len = len(episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0])
         if list_len > 2:
@@ -133,8 +142,8 @@ class NormValueInfoCallback(LogInfoCallback):
                 (1 - policy.decay) * np.var(postprocessed_batch["value_targets"])
             policy.var_vf_target = max(policy.var_vf_target, 1e-6)
 
-        worker.mean_vf_target = policy.mean_vf_target
-        worker.var_vf_target = policy.var_vf_target
+        worker.mean_vf_target_last = policy.mean_vf_target
+        worker.var_vf_target_last = policy.var_vf_target
 
         episode.custom_metrics['mean_vf_target'] = policy.mean_vf_target
         episode.custom_metrics['var_vf_target'] = policy.var_vf_target
@@ -142,4 +151,5 @@ class NormValueInfoCallback(LogInfoCallback):
 
     def on_sample_end(self, *, worker, samples, **kwargs):
         samples['default_policy']['value_targets'] = \
-         (samples['default_policy']['value_targets'] - worker.mean_vf_target) / (worker.var_vf_target)
+         (samples['default_policy']['value_targets'] - worker.mean_vf_target_last) / (worker.var_vf_target_last)
+        worker.after_end_sample = True
