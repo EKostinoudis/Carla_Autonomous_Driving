@@ -56,11 +56,27 @@ class LogInfoCallback(DefaultCallbacks):
             episode.custom_metrics[name + "_sum"] = np.sum(value)
             episode.hist_data[name] = value
 
+
+def update_stats(existing_mean, existing_var, existing_count, new_mean, new_var, new_count):
+    combined_count = existing_count + new_count
+
+    # Update mean
+    combined_mean = (existing_count * existing_mean + new_count * new_mean) / combined_count
+
+    # Update variance
+    combined_variance = (
+        (existing_count * (existing_var + existing_mean**2) +
+         new_count * (new_var + new_mean**2)) / combined_count
+        - combined_mean**2
+    )
+    return combined_mean, combined_variance, combined_count
+
+
 class NormValueInfoCallback(LogInfoCallback):
     def on_create_policy(self, *, policy_id, policy: Policy) -> None:
         policy.mean_vf_target = 0.
         policy.var_vf_target = 1.
-        policy.decay = 0.9
+        policy.num_values = 0
 
     '''
     def on_episode_start(
@@ -114,12 +130,12 @@ class NormValueInfoCallback(LogInfoCallback):
         list_len = len(episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0])
         if list_len > 2:
             episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1] = \
-                worker.mean_vf_target + (worker.var_vf_target) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1]
+                worker.mean_vf_target + (worker.var_vf_target**0.5) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1]
         elif list_len == 2:
             episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][0] = \
-                worker.mean_vf_target + (worker.var_vf_target) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][0]
+                worker.mean_vf_target + (worker.var_vf_target**0.5) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][0]
             episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1] = \
-                worker.mean_vf_target + (worker.var_vf_target) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1]
+                worker.mean_vf_target + (worker.var_vf_target**0.5) * episode._agent_collectors["agent0"].buffers[SampleBatch.VF_PREDS][0][-1]
 
     def on_postprocess_trajectory(
         self,
@@ -135,12 +151,14 @@ class NormValueInfoCallback(LogInfoCallback):
     ) -> None:
         policy = policies[policy_id]
 
-        with torch.no_grad():
-            policy.mean_vf_target = policy.decay * policy.mean_vf_target + \
-                (1 - policy.decay) * np.mean(postprocessed_batch["value_targets"])
-            policy.var_vf_target = policy.decay * policy.var_vf_target + \
-                (1 - policy.decay) * np.var(postprocessed_batch["value_targets"])
-            policy.var_vf_target = max(policy.var_vf_target, 1e-6)
+        policy.mean_vf_target, policy.var_vf_target, policy.num_values = update_stats(
+            policy.mean_vf_target,
+            policy.var_vf_target,
+            policy.num_values,
+            np.mean(postprocessed_batch['value_targets']),
+            np.var(postprocessed_batch['value_targets']),
+            postprocessed_batch['value_targets'].shape[0],
+        )
 
         worker.mean_vf_target_last = policy.mean_vf_target
         worker.var_vf_target_last = policy.var_vf_target
@@ -151,5 +169,5 @@ class NormValueInfoCallback(LogInfoCallback):
 
     def on_sample_end(self, *, worker, samples, **kwargs):
         samples['default_policy']['value_targets'] = \
-         (samples['default_policy']['value_targets'] - worker.mean_vf_target_last) / (worker.var_vf_target_last)
+         (samples['default_policy']['value_targets'] - worker.mean_vf_target_last) / (worker.var_vf_target_last**0.5)
         worker.after_end_sample = True
