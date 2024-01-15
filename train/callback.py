@@ -170,3 +170,23 @@ class NormValueInfoCallback(LogInfoCallback):
         samples['default_policy']['value_targets'] = \
          (samples['default_policy']['value_targets'] - worker.mean_vf_target_last) / (worker.var_vf_target_last**0.5)
         worker.after_end_sample = True
+
+class NormAdvantageInfoCallback(LogInfoCallback):
+    def on_sample_end(self, *, worker, samples, **kwargs):
+        super().on_sample_end(
+            worker=worker,
+            samples=samples,
+            **kwargs,
+        )
+        adv = samples['default_policy']['advantages']
+        samples['default_policy']['advantages'] = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
+
+class NormValueAdvantageInfoCallback(NormValueInfoCallback):
+    def on_sample_end(self, *, worker, samples, **kwargs):
+        super().on_sample_end(
+            worker=worker,
+            samples=samples,
+            **kwargs,
+        )
+        adv = samples['default_policy']['advantages']
+        samples['default_policy']['advantages'] = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)

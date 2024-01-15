@@ -12,7 +12,12 @@ from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
 from train.utils import get_config_path, update_to_abspath
-from train.callback import LogInfoCallback, NormValueInfoCallback
+from train.callback import (
+    LogInfoCallback,
+    NormValueInfoCallback,
+    NormAdvantageInfoCallback,
+    NormValueAdvantageInfoCallback,
+)
 from train.rllib_trainers import (
     PPOTorchLearnerClearCache,
     PPOTorchLearnerPretrainedKLLoss,
@@ -110,10 +115,15 @@ def main(args):
 
     # callback
     if conf.get('norm_target_value', False):
-        callback = NormValueInfoCallback
+        if conf.get('norm_advantage', False):
+            callback = NormValueAdvantageInfoCallback
+        else:
+            callback = NormValueInfoCallback
     else:
-        callback = LogInfoCallback
-
+        if conf.get('norm_advantage', False):
+            callback = NormAdvantageInfoCallback
+        else:
+            callback = LogInfoCallback
 
     extra_params = dict(conf.extra_params)
     list_params = ['lr', 'lr_schedule', 'entropy_coeff']

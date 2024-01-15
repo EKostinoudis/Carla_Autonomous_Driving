@@ -56,6 +56,9 @@ lr_pretrain: 5.0e-05 # lr for pretraining (null or remove it to use the same as 
 # normalize the target value function (with exponentially weighted moving average)
 norm_target_value: true
 
+# normalize the advantage
+norm_advantage: true
+
 train_iters: 1000
 
 # for sampling
