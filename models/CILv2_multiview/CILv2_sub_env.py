@@ -141,16 +141,16 @@ class CILv2_sub_env(gym.Env):
         self.env = None
         self.env_proc = None
         self.port = 0
-        self.env_config = env_config
+        self.env_config = env_config.copy()
         self.path_to_conf_file = path_to_conf_file
 
-        use_launcher = env_config.get('use_carla_launcher', False)
+        use_launcher = self.env_config.get('use_carla_launcher', False)
 
         # update the env for the environment
         if rllib_config is not None:
-            offset = rllib_config.worker_index - 1
-            seed = env_config.get('seed', random.randint(0, 10000)) + offset
-            self.device = offset % env_config.get('num_devices', 1)
+            offset = rllib_config.worker_index - 1 + rllib_config.num_workers * rllib_config.vector_index
+            seed = self.env_config.get('seed', random.randint(0, 10000)) + offset
+            self.device = offset % self.env_config.get('num_devices', 1)
             self.env_config.update({
                 'seed': seed,
                 'use_carla_launcher': False,
