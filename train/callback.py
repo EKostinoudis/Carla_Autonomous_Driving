@@ -165,7 +165,6 @@ class NormValueInfoCallback(LogInfoCallback):
 
         episode.custom_metrics['mean_vf_target'] = policy.mean_vf_target
         episode.custom_metrics['var_vf_target'] = policy.var_vf_target
-        episode.custom_metrics['decay_vf_target'] = policy.decay
 
     def on_sample_end(self, *, worker, samples, **kwargs):
         samples['default_policy']['value_targets'] = \
