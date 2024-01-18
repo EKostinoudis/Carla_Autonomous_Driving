@@ -58,10 +58,28 @@ class LogInfoCallback(DefaultCallbacks):
 
 
 class NormValueInfoCallback(LogInfoCallback):
-    def on_create_policy(self, *, policy_id, policy: Policy) -> None:
-        policy.mean_vf_target = 0.
-        policy.var_vf_target = 1.
-        policy.num_values = 0
+    def on_episode_start(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[str, Policy],
+        episode: EpisodeV2,
+        env_index: int,
+        **kwargs,
+    ):
+        super().on_episode_start(
+            worker=worker,
+            base_env=base_env,
+            policies=policies,
+            episode=episode,
+            env_index=env_index,
+            **kwargs,
+        )
+        mean_vf_target = worker.global_vars.get('mean_vf_target', defaultdict(lambda: 0.))['default_policy']
+        std_vf_target = worker.global_vars.get('std_vf_target', defaultdict(lambda: 1.))['default_policy']
+        episode.user_data['mean_vf_target'].append(mean_vf_target)
+        episode.user_data['std_vf_target'].append(std_vf_target)
 
     def on_episode_step(
         self,
