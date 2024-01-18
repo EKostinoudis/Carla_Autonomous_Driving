@@ -11,6 +11,7 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.policy.policy import Policy
 from ray.rllib.models import ModelCatalog
 
+from train.rllib_ppo import PPO_vf_norm
 from train.utils import get_config_path, update_to_abspath
 from train.callback import (
     LogInfoCallback,
@@ -37,6 +38,7 @@ from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
 from ray.rllib.utils.typing import TensorType
 from ray.rllib.utils.from_config import NotProvided
+from ray.tune.registry import register_trainable
 
 # TorchBeta had a bug, this a fix for the bug
 class TorchBetaFixed(TorchBeta):
@@ -48,6 +50,7 @@ ModelCatalog.register_custom_model("CIL_multiview_rllib", CIL_multiview_rllib)
 ModelCatalog.register_custom_model("CIL_multiview_rllib_stack", CIL_multiview_rllib_stack)
 ModelCatalog.register_custom_action_dist("beta", TorchBetaFixed)
 
+register_trainable('PPO_vf_norm', PPO_vf_norm)
 
 def main(args):
     conf_file = get_config_path(args.config)
@@ -115,15 +118,11 @@ def main(args):
 
     # callback
     if conf.get('norm_target_value', False):
-        if conf.get('norm_advantage', False):
-            callback = NormValueAdvantageInfoCallback
-        else:
-            callback = NormValueInfoCallback
+        callback = NormValueInfoCallback
+        algo_name = 'PPO_vf_norm'
     else:
-        if conf.get('norm_advantage', False):
-            callback = NormAdvantageInfoCallback
-        else:
-            callback = LogInfoCallback
+        algo_name = 'PPO'
+        callback = LogInfoCallback
 
     extra_params = dict(conf.extra_params)
     list_params = ['lr', 'lr_schedule', 'entropy_coeff']
@@ -253,7 +252,7 @@ def main(args):
             config.update_from_dict({'lr': lr_pretrain})
 
         results = tune.run(
-            'PPO',
+            algo_name,
             name='ppo_train/value_pretrain',
             config=config.to_dict(),
             stop={"training_iteration": pretrain_iters},
@@ -338,7 +337,7 @@ def main(args):
     config.update_from_dict(extra_params)
 
     results = tune.run(
-        'PPO',
+        algo_name,
         name='ppo_train/main',
         config=config.to_dict(),
         stop={"training_iteration": train_iters},
