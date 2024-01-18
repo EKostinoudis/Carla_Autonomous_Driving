@@ -16,8 +16,6 @@ from train.utils import get_config_path, update_to_abspath
 from train.callback import (
     LogInfoCallback,
     NormValueInfoCallback,
-    NormAdvantageInfoCallback,
-    NormValueAdvantageInfoCallback,
 )
 from train.rllib_trainers import (
     PPOTorchLearnerClearCache,
