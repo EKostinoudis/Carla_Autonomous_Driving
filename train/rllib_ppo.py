@@ -79,7 +79,6 @@ class PPO_vf_norm(PPO):
                 (self.std_vf_target[key])
 
         # Standardize advantages
-        print(train_batch)
         train_batch = standardize_fields(train_batch, ["advantages"])
         # Train
         if self.config._enable_learner_api:
@@ -123,14 +122,14 @@ class PPO_vf_norm(PPO):
         }
 
         # update the mean and std vf targets in the workers
+        mean, std = self.mean_vf_target, self.std_vf_target
         self.workers.foreach_worker(
             lambda w: w.set_global_vars({
-                "mean_vf_target": self.mean_vf_target,
-                "std_vf_target": self.std_vf_target,
+                "mean_vf_target": mean,
+                "std_vf_target": std,
                 **global_vars,
             }),
         )
-
 
         # Update weights - after learning on the local worker - on all remote
         # workers.
@@ -221,3 +220,4 @@ class PPO_vf_norm(PPO):
         self.workers.local_worker().set_global_vars(global_vars)
 
         return train_results
+
