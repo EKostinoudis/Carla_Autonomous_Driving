@@ -97,8 +97,8 @@ class PPGTorchLearner(PPOTorchLearner):
                 {
                     'sleep_kl_loss': kl_loss,
                     'sleep_kl_loss_scaled': kl_loss_scaled,
-                    'sleep_vf_loss': value_fn_out,
-                    'sleep_vf_policy_loss': value_policy_out,
+                    'sleep_vf_loss': vf_loss,
+                    'sleep_vf_policy_loss': vf_loss_p,
                 },
             )
 
