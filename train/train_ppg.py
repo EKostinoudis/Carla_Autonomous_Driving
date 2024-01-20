@@ -44,7 +44,6 @@ def main(args):
 
     train_iters = conf.train_iters
     num_workers = conf.num_workers
-    training_gpus = conf.training_gpus
     worker_gpus = conf.worker_gpus
     checkpoint_freq = conf.checkpoint_freq
     num_cpus_per_worker = conf.get('num_cpus_per_worker', 1)
@@ -126,10 +125,7 @@ def main(args):
         model_config_dict={
             'g_conf': g_conf,
             'checkpoint': checkpoint_file,
-            'pretrain_value': False,
             'output_distribution': output_distribution,
-            'use_separate_vf': use_separate_vf,
-            'use_stacked_model': use_stacked_model,
         },
     )
     _enable_rl_module_api = True
@@ -150,7 +146,6 @@ def main(args):
             rollout_fragment_length=rollout_fragment_length,
         )
         .resources(
-            num_gpus=training_gpus,
             num_cpus_per_worker=num_cpus_per_worker,
             num_gpus_per_worker=worker_gpus,
             num_learner_workers=num_learner_workers,

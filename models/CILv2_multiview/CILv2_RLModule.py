@@ -15,7 +15,7 @@ from .network.models.architectures.CIL_multiview.CIL_multiview_rllib import (
     CIL_multiview_actor_critic_RLModule,
     CIL_multiview_actor_critic_sep_RLModule,
     CIL_multiview_actor_critic_stack_RLModule,
-    CIL_multiview_actor_critic_ppg,
+    CIL_multiview_actor_critic_ppg_RLModule,
 )
 
 def get_model(model_config):
@@ -89,7 +89,7 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
         pt_config = deepcopy(self.config.model_config_dict)
         pt_config.update({'use_vf': False})
 
-        self.pt_model = [model_type(self.config.model_config_dict).requires_grad_(False)]
+        self.pt_model = [model_type(pt_config).requires_grad_(False)]
         self.pt_model_device_set = False
 
         # for now we use the model config for passing the distribution, the
@@ -159,14 +159,14 @@ class CILv2_RLModule_PT_Policy(TorchRLModule, PPORLModule):
 class CILv2_RLModule_PPG(TorchRLModule, PPORLModule):
     ''' RLModule that calculated the pretrained action dist at exploration '''
     def setup(self):
-        model_type = CIL_multiview_actor_critic_ppg
+        model_type = CIL_multiview_actor_critic_ppg_RLModule
         self.model = model_type(self.config.model_config_dict)
 
         # fixed pretrained model
         pt_config = deepcopy(self.config.model_config_dict)
         pt_config.update({'use_vf': False})
 
-        self.pt_model = [model_type(self.config.model_config_dict).requires_grad_(False)]
+        self.pt_model = [model_type(pt_config).requires_grad_(False)]
         self.pt_model_device_set = False
 
         # for now we use the model config for passing the distribution, the

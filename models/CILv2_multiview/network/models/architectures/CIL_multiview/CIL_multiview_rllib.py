@@ -627,9 +627,9 @@ class CIL_multiview_actor_critic_stack_RLModule(CIL_multiview_actor_critic_stack
                 param.requires_grad = True
 
 class CIL_multiview_actor_critic_ppg_RLModule(CIL_multiview_actor_critic_ppg):
-    ''' Wrapper for CIL_multiview_actor_critic_sep in order to be used in RLModule '''
+    ''' Wrapper for CIL_multiview_actor_critic_ppg in order to be used in RLModule '''
     def __init__(self, config):
-        CIL_multiview_actor_critic_sep.__init__(self, config['g_conf'], config.get('use_vf', True))
+        CIL_multiview_actor_critic_ppg.__init__(self, config['g_conf'], config.get('use_vf', True))
         checkpoint = config.get('checkpoint', None)
 
         if checkpoint is not None:
