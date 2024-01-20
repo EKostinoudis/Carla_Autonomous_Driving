@@ -113,12 +113,7 @@ extra_params:
   worker_restore_timeout_s: 1800.0 # 180.0
   worker_health_probe_timeout_s: 600 # 60
   sync_filters_on_rollout_workers_timeout_s: 600.0 # 60.0
-  metrics_episode_collection_timeout_s: 600.0 60.0
+  metrics_episode_collection_timeout_s: 600.0 # 60.0
   evaluation_sample_timeout_s: 1800.0 # 180.0
 
-  # causes an error, do NOT set to true
-  # _disable_initialize_loss_from_dummy_batch: false # default false
 
-  # explore: true
-  # exploration_config:
-  #   type: StochasticSampling

@@ -1,0 +1,91 @@
+# the distribution to use for the policy, options: gaussian, beta
+output_distribution: gaussian
+
+# use CILv2_vec_env (vector environment)
+use_vec_env: false
+
+# use CILv2_sub_env (runs the environment in a subprocess environment)
+use_sub_env: true
+
+no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
+
+# file to a checkpoint from which we start the training
+checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
+
+# path the the models config file
+path_to_conf: ./models/CILv2_multiview/_results/Ours/Town12346_5/config40.json
+
+# normalize the target value function (with exponentially weighted moving average)
+norm_target_value: true
+
+train_iters: 1000
+
+# for sampling
+num_workers: 8 # number of parallel environments
+num_cpus_per_worker: 1
+worker_gpus: 0 # number of gpus for the sampling (collecting the observations)
+
+# for training
+num_learner_workers: 1
+num_cpus_per_learner_worker: 1
+num_gpus_per_learner_worker: 1
+
+checkpoint_freq: 20 # frequency for the checkpoints
+
+# extra parameters for the PPOConfig
+extra_params:
+  # kl coef for the auxiliary phase
+  aux_kl_coef: 1.
+
+  # kl coeff with the pretrained model results
+  pt_kl_coeff: 0.03
+  pt_kl_coeff_decay: 0.999
+
+  # number of epochs to run for the auxiliary phase
+  auxiliary_epochs: 5
+
+  # number of iters before running an auxiliary phase 
+  normal_phase_iters: 4
+
+  disable_env_checking: true
+  normalize_actions: false
+  clip_actions: false
+
+  lr: 5.0e-06
+  train_batch_size: 2000
+  sgd_minibatch_size: 12
+  num_sgd_iter: 30
+
+  gamma: 0.99
+  clip_param: 0.2
+
+  vf_clip_param: 10.0
+  vf_loss_coeff: 1.0
+
+  use_gae: true
+  lambda_: 0.95
+
+  use_kl_loss: true
+  kl_coeff: 0.0
+  kl_target: 0.01
+
+  shuffle_sequences: true
+  entropy_coeff: 0.0
+
+  # _disable_preprocessor_api: true # in older version uses numpy array if used???
+  recreate_failed_workers: true # default false
+  restart_failed_sub_environments: false # default false
+
+  torch_compile_learner: true # default false
+  torch_compile_learner_dynamo_backend: ipex # inductor
+  torch_compile_learner_dynamo_mode: max-autotune
+
+  torch_compile_worker: false # default false
+  # torch_compile_worker_dynamo_backend: inductor
+
+  worker_restore_timeout_s: 180.0 # 180.0
+  worker_health_probe_timeout_s: 60 # 60
+  sync_filters_on_rollout_workers_timeout_s: 60.0 # 60.0
+  metrics_episode_collection_timeout_s: 60.0 # 60.0
+  evaluation_sample_timeout_s: 180.0 # 180.0
+
