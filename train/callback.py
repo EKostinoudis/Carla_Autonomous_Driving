@@ -78,8 +78,8 @@ class NormValueInfoCallback(LogInfoCallback):
         )
         mean_vf_target = worker.global_vars.get('mean_vf_target', defaultdict(lambda: 0.))['default_policy']
         std_vf_target = worker.global_vars.get('std_vf_target', defaultdict(lambda: 1.))['default_policy']
-        episode.user_data['mean_vf_target'].append(mean_vf_target)
-        episode.user_data['std_vf_target'].append(std_vf_target)
+        episode.custom_metrics['mean_vf_target'] = mean_vf_target
+        episode.custom_metrics['std_vf_target'] = std_vf_target
 
     def on_episode_step(
         self,

@@ -37,6 +37,12 @@ extra_params:
   # kl coef for the auxiliary phase
   aux_kl_coef: 1.
 
+  # coef for the value function loss at the auxiliary phase
+  aux_vf_coef: 1.
+
+  # coef for the policy head value function loss at the auxiliary phase
+  aux_policy_vf_coef: 1.
+
   # kl coeff with the pretrained model results
   pt_kl_coeff: 0.03
   pt_kl_coeff_decay: 0.999

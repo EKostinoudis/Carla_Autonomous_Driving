@@ -49,6 +49,8 @@ class PPGLearnerHyperparameters(PPOLearnerHyperparameters):
     pt_kl_coeff: float = None
     pt_kl_coeff_decay: float = None
     aux_kl_coef: float = None
+    aux_vf_coef: float = None
+    aux_policy_vf_coef: float = None
 
 class PPGConfig(PPOConfig):
     def __init__(self, algo_class=None):
@@ -60,6 +62,8 @@ class PPGConfig(PPOConfig):
         self.auxiliary_epochs = 5
         self.normal_phase_iters = 2
         self.aux_kl_coef = 1.
+        self.aux_vf_coef = 1.
+        self.aux_policy_vf_coef = 1.
 
     def get_learner_hyperparameters(self) -> PPGLearnerHyperparameters:
         base_hps = super().get_learner_hyperparameters()
@@ -68,6 +72,8 @@ class PPGConfig(PPOConfig):
             pt_kl_coeff=self.pt_kl_coeff,
             pt_kl_coeff_decay=self.pt_kl_coeff_decay,
             aux_kl_coef=self.aux_kl_coef,
+            aux_vf_coef=self.aux_vf_coef,
+            aux_policy_vf_coef=self.aux_policy_vf_coef,
             **dataclasses.asdict(base_hps),
         )
 

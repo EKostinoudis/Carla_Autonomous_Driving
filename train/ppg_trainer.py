@@ -103,8 +103,8 @@ class PPGTorchLearner(PPOTorchLearner):
             )
 
             return torch.mean(
-                vf_loss +
-                vf_loss_p +
+                vf_loss * hps.aux_vf_coef +
+                vf_loss_p * hps.aux_policy_vf_coef +
                 kl_loss_scaled
             )
         else:
