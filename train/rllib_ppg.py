@@ -19,7 +19,7 @@ from ray.rllib.utils.metrics import (
     ALL_MODULES,
 )
 from ray.rllib.utils.typing import ResultDict
-from ray.rllib.policy.sample_batch import concat_samples, SampleBatch
+from ray.rllib.policy.sample_batch import MultiAgentBatch, concat_samples, SampleBatch
 from ray.rllib.evaluation.postprocessing import Postprocessing
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.algorithms.ppo.ppo import PPOConfig
@@ -43,6 +43,11 @@ def update_stats(existing_mean, existing_var, existing_count, new_mean, new_var,
 
     return combined_mean, combined_variance, combined_count
 
+def remove_keys(batch: MultiAgentBatch, key_list: List[str]):
+    for policy_id in batch.policy_batches:
+        for key in key_list:
+            batch[policy_id].pop(key, None)
+
 @dataclass
 class PPGLearnerHyperparameters(PPOLearnerHyperparameters):
     use_pt_kl_loss: bool = None
@@ -64,6 +69,8 @@ class PPGConfig(PPOConfig):
         self.aux_kl_coef = 1.
         self.aux_vf_coef = 1.
         self.aux_policy_vf_coef = 1.
+        self.advantage_norm = True
+        self.remove_unused_data = False
 
     def get_learner_hyperparameters(self) -> PPGLearnerHyperparameters:
         base_hps = super().get_learner_hyperparameters()
@@ -133,12 +140,29 @@ class PPG(PPO):
                     (train_batch[key][Postprocessing.VALUE_TARGETS] - self.mean_vf_target[key]) / \
                     (self.std_vf_target[key])
 
-        # Standardize advantages
-        train_batch = standardize_fields(train_batch, ["advantages"])
+        if self.config.advantage_norm:
+            # Standardize advantages
+            train_batch = standardize_fields(train_batch, ["advantages"])
 
         # Train
         is_module_trainable = self.workers.local_worker().is_policy_to_train
         self.learner_group.set_is_module_trainable(is_module_trainable)
+
+        if self.config.remove_unused_data:
+            remove_keys(
+                train_batch,
+                [
+                    'new_obs',
+                    'prev_actions',
+                    'rewards',
+                    'prev_rewards',
+                    'infos',
+                    'terminateds',
+                    'truncateds',
+                    'action_prob',
+                ],
+            )
+
         train_results = self.learner_group.update(
             train_batch,
             minibatch_size=self.config.sgd_minibatch_size,

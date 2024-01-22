@@ -39,7 +39,6 @@ from ray.rllib.algorithms.ppo.torch.ppo_torch_learner import PPOTorchLearner
 class PPGTorchLearner(PPOTorchLearner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.sleep_mode_this_iter = False
 
     def build(self) -> None:
         super().build()
@@ -77,9 +76,8 @@ class PPGTorchLearner(PPOTorchLearner):
             fwd_out[SampleBatch.ACTION_DIST_INPUTS]
         )
 
-        # if the batch doesn't have rewards then we are in the sleep phase of ppg
-        if not SampleBatch.REWARDS in batch:
-            self.sleep_mode_this_iter = True
+        # if the batch doesn't have actions then we are in the sleep phase of ppg
+        if not SampleBatch.ACTIONS in batch:
             prev_action_dist = action_dist_class_exploration.from_logits(
                 batch[SampleBatch.ACTION_DIST_INPUTS]
             )
@@ -198,13 +196,11 @@ class PPGTorchLearner(PPOTorchLearner):
             sampled_kl_values=sampled_kl_values,
         )
 
-        if not self.sleep_mode_this_iter:
-            # update the pretrained kl coefficient
-            if hps.use_pt_kl_loss:
-                curr_var = self.curr_pt_kl_coeffs_per_module[module_id]
-                curr_var.data *= hps.pt_kl_coeff_decay
-                results.update({'curr_pt_kl_coeff': curr_var.item()})
-            self.sleep_mode_this_iter = False
+        # update the pretrained kl coefficient
+        if hps.use_pt_kl_loss:
+            curr_var = self.curr_pt_kl_coeffs_per_module[module_id]
+            curr_var.data *= hps.pt_kl_coeff_decay
+            results.update({'curr_pt_kl_coeff': curr_var.item()})
 
         if hps.use_kl_loss:
             sampled_kl = sampled_kl_values[module_id]
@@ -289,10 +285,10 @@ class PPGTorchLearner(PPOTorchLearner):
         batch = self._convert_batch_type(batch)
         batch = self._set_slicing_by_batch_id(batch, value=True)
 
-        # if we are in the speel mode (no reward in the batch), populate the
+        # if we are in the speel mode (no actions in the batch), populate the
         # action dist field of the batch
         key = list(batch.policy_batches.keys())[0]
-        if not SampleBatch.REWARDS in batch[key]:
+        if not SampleBatch.ACTIONS in batch[key]:
             batch_len = batch.env_steps()
             idx = 0
             while idx < batch_len:

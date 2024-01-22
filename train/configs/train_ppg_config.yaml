@@ -53,6 +53,13 @@ extra_params:
   # number of iters before running an auxiliary phase 
   normal_phase_iters: 4
 
+  # use advantage normalization
+  advantage_norm: true
+
+  # remove the following fields from the train batch:
+  # new_obs, prev_actions, rewards, prev_rewards, infos, terminateds, truncateds, action_prob'
+  remove_unused_data: true
+
   disable_env_checking: true
   normalize_actions: false
   clip_actions: false
