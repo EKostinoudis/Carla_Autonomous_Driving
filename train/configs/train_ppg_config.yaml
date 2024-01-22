@@ -32,7 +32,7 @@ num_gpus_per_learner_worker: 1
 
 checkpoint_freq: 20 # frequency for the checkpoints
 
-# extra parameters for the PPOConfig
+# extra parameters for the PPGConfig
 extra_params:
   # kl coef for the auxiliary phase
   aux_kl_coef: 1.
