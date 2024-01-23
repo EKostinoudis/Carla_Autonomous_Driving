@@ -56,6 +56,9 @@ class PPGLearnerHyperparameters(PPOLearnerHyperparameters):
     aux_kl_coef: float = None
     aux_vf_coef: float = None
     aux_policy_vf_coef: float = None
+    use_dataloader: bool = None
+    dataloader_pin_memory: bool = None
+    dataloader_num_workers: int = None
 
 class PPGConfig(PPOConfig):
     def __init__(self, algo_class=None):
@@ -71,6 +74,9 @@ class PPGConfig(PPOConfig):
         self.aux_policy_vf_coef = 1.
         self.advantage_norm = True
         self.remove_unused_data = False
+        self.use_dataloader = False
+        self.dataloader_pin_memory = False
+        self.dataloader_num_workers = 2
 
     def get_learner_hyperparameters(self) -> PPGLearnerHyperparameters:
         base_hps = super().get_learner_hyperparameters()
@@ -81,6 +87,9 @@ class PPGConfig(PPOConfig):
             aux_kl_coef=self.aux_kl_coef,
             aux_vf_coef=self.aux_vf_coef,
             aux_policy_vf_coef=self.aux_policy_vf_coef,
+            use_dataloader=self.use_dataloader,
+            dataloader_pin_memory=self.dataloader_pin_memory,
+            dataloader_num_workers=self.dataloader_num_workers,
             **dataclasses.asdict(base_hps),
         )
 

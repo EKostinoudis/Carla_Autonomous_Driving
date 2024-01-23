@@ -35,6 +35,53 @@ from ray.rllib.utils.lambda_defaultdict import LambdaDefaultDict
 from ray.rllib.utils.schedules.scheduler import Scheduler
 from ray.rllib.utils.torch_utils import sequence_mask
 from ray.rllib.algorithms.ppo.torch.ppo_torch_learner import PPOTorchLearner
+from ray.rllib.utils.minibatch_utils import MiniBatchIteratorBase
+
+from torch.utils.data import Dataset, DataLoader
+
+class PPGDataset(Dataset):
+    def __init__(self, batch: MultiAgentBatch):
+        super().__init__()
+        self.batch = batch
+        self.len = batch.count
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, index):
+        output = {}
+        for policy_id in self.batch.policy_batches.keys():
+            out_policy = {}
+            for key, data in self.batch.policy_batches[policy_id].items():
+                out_policy[key] = data[index]
+            output[policy_id] = SampleBatch(out_policy)
+        return output
+
+def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2):
+    class DataloaderBatchIterator(MiniBatchIteratorBase):
+        def __init__(
+            self, batch: MultiAgentBatch, minibatch_size: int, num_iters: int = 1
+        ) -> None:
+            super().__init__(batch, minibatch_size, num_iters)
+            self.batch = batch
+            self.minibatch_size = minibatch_size
+            self.num_iters = num_iters
+
+        def __iter__(self):
+            dataset = PPGDataset(self.batch)
+            dataloader = DataLoader(
+                dataset,
+                batch_size=self.minibatch_size,
+                shuffle=shuffle,
+                pin_memory=pin_memory,
+                num_workers=num_workers,
+            )
+            for _ in range(self.num_iters):
+                for tensor_minibatch in dataloader:
+                    yield MultiAgentBatch(SampleBatch(tensor_minibatch), len(self.batch))
+    
+    return DataloaderBatchIterator
+
 
 class PPGTorchLearner(PPOTorchLearner):
     def __init__(self, **kwargs):
@@ -88,6 +135,7 @@ class PPGTorchLearner(PPOTorchLearner):
             value_policy_out = fwd_out['vf_policy']
 
             vf_loss = possibly_masked_mean(torch.pow(value_fn_out - batch[Postprocessing.VALUE_TARGETS], 2.0))
+            vf_loss_clipped = torch.clamp(vf_loss, 0, hps.vf_clip_param)
             vf_loss_p = possibly_masked_mean(torch.pow(value_policy_out - batch[Postprocessing.VALUE_TARGETS], 2.0))
 
             self.register_metrics(
@@ -96,12 +144,13 @@ class PPGTorchLearner(PPOTorchLearner):
                     'sleep_kl_loss': kl_loss,
                     'sleep_kl_loss_scaled': kl_loss_scaled,
                     'sleep_vf_loss': vf_loss,
+                    'sleep_vf_loss_clipped': vf_loss_clipped,
                     'sleep_vf_policy_loss': vf_loss_p,
                 },
             )
 
             return torch.mean(
-                vf_loss * hps.aux_vf_coef +
+                vf_loss_clipped * hps.aux_vf_coef +
                 vf_loss_p * hps.aux_policy_vf_coef +
                 kl_loss_scaled
             )
@@ -264,19 +313,31 @@ class PPGTorchLearner(PPOTorchLearner):
             # We must do at least one pass on the batch for training.
             raise ValueError("`num_iters` must be >= 1")
 
-        if minibatch_size:
-            batch_iter = MiniBatchCyclicIterator
-        elif num_iters > 1:
-            # `minibatch_size` was not set but `num_iters` > 1.
-            # Under the old training stack, users could do multiple sgd passes
-            # over a batch without specifying a minibatch size. We enable
-            # this behavior here by setting the minibatch size to be the size
-            # of the batch (e.g. 1 minibatch of size batch.count)
-            minibatch_size = batch.count
-            batch_iter = MiniBatchCyclicIterator
+        if self.hps.use_dataloader:
+            shuffle = True
+            # if we are in sleep mode, don't shuffle the data
+            key = list(batch.policy_batches.keys())[0]
+            if not SampleBatch.ACTIONS in batch[key]:
+                shuffle = False
+            batch_iter = DataloaderBatchIteratorFactory(
+                pin_memory=self.hps.dataloader_pin_memory,
+                shuffle=shuffle,
+                num_workers=self.hps.dataloader_num_workers,
+            )
         else:
-            # `minibatch_size` and `num_iters` are not set by the user.
-            batch_iter = MiniBatchDummyIterator
+            if minibatch_size:
+                batch_iter = MiniBatchCyclicIterator
+            elif num_iters > 1:
+                # `minibatch_size` was not set but `num_iters` > 1.
+                # Under the old training stack, users could do multiple sgd passes
+                # over a batch without specifying a minibatch size. We enable
+                # this behavior here by setting the minibatch size to be the size
+                # of the batch (e.g. 1 minibatch of size batch.count)
+                minibatch_size = batch.count
+                batch_iter = MiniBatchCyclicIterator
+            else:
+                # `minibatch_size` and `num_iters` are not set by the user.
+                batch_iter = MiniBatchDummyIterator
 
         results = []
         # Convert input batch into a tensor batch (MultiAgentBatch) on the correct
@@ -312,7 +373,9 @@ class PPGTorchLearner(PPOTorchLearner):
         for tensor_minibatch in batch_iter(batch, minibatch_size, num_iters):
             # Make the actual in-graph/traced `_update` call. This should return
             # all tensor values (no numpy).
+            # print(f'{tensor_minibatch=}')
             nested_tensor_minibatch = NestedDict(tensor_minibatch.policy_batches)
+            # print(f'{nested_tensor_minibatch=}')
             (
                 fwd_out,
                 loss_per_module,

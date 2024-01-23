@@ -60,6 +60,11 @@ extra_params:
   # new_obs, prev_actions, rewards, prev_rewards, infos, terminateds, truncateds, action_prob'
   remove_unused_data: true
 
+  # use dataloader for loading the data at the training (plus options)
+  use_dataloader: true
+  dataloader_pin_memory: true
+  dataloader_num_workers: 2
+
   disable_env_checking: true
   normalize_actions: false
   clip_actions: false
