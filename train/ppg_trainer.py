@@ -1,4 +1,5 @@
 import torch
+import tree
 import gc
 from collections import defaultdict
 from typing import (
@@ -57,7 +58,7 @@ class PPGDataset(Dataset):
             output[policy_id] = SampleBatch(out_policy)
         return output
 
-def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2):
+def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2, device=''):
     class DataloaderBatchIterator(MiniBatchIteratorBase):
         def __init__(
             self, batch: MultiAgentBatch, minibatch_size: int, num_iters: int = 1
@@ -68,6 +69,7 @@ def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2)
             self.num_iters = num_iters
 
         def __iter__(self):
+            pin_memory_device = device if pin_memory else ''
             dataset = PPGDataset(self.batch)
             dataloader = DataLoader(
                 dataset,
@@ -75,9 +77,14 @@ def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2)
                 shuffle=shuffle,
                 pin_memory=pin_memory,
                 num_workers=num_workers,
+                pin_memory_device=str(pin_memory_device),
             )
             for _ in range(self.num_iters):
                 for tensor_minibatch in dataloader:
+                    tensor_minibatch = tree.map_structure(
+                        lambda x: x.to(device, non_blocking=pin_memory),
+                        tensor_minibatch,
+                    )
                     yield MultiAgentBatch(SampleBatch(tensor_minibatch), len(self.batch))
     
     return DataloaderBatchIterator
@@ -323,6 +330,7 @@ class PPGTorchLearner(PPOTorchLearner):
                 pin_memory=self.hps.dataloader_pin_memory,
                 shuffle=shuffle,
                 num_workers=self.hps.dataloader_num_workers,
+                device=self._device,
             )
         else:
             if minibatch_size:
@@ -340,11 +348,19 @@ class PPGTorchLearner(PPOTorchLearner):
                 batch_iter = MiniBatchDummyIterator
 
         results = []
-        # Convert input batch into a tensor batch (MultiAgentBatch) on the correct
-        # device (e.g. GPU). We move the batch already here to avoid having to move
-        # every single minibatch that is created in the `batch_iter` below.
-        batch = self._convert_batch_type(batch)
-        batch = self._set_slicing_by_batch_id(batch, value=True)
+        if self.hps.use_dataloader:
+            # convert data into tensors but don't load them in them in the gpu
+            device = self._device
+            self._device = 'cpu'
+            batch = self._convert_batch_type(batch)
+            batch = self._set_slicing_by_batch_id(batch, value=True)
+            self._device = device
+        else:
+            # Convert input batch into a tensor batch (MultiAgentBatch) on the correct
+            # device (e.g. GPU). We move the batch already here to avoid having to move
+            # every single minibatch that is created in the `batch_iter` below.
+            batch = self._convert_batch_type(batch)
+            batch = self._set_slicing_by_batch_id(batch, value=True)
 
         # if we are in the speel mode (no actions in the batch), populate the
         # action dist field of the batch
@@ -359,6 +375,8 @@ class PPGTorchLearner(PPOTorchLearner):
                 for module_id, module_batch in batch.policy_batches.items():
                     minibatch[module_id] = module_batch[idx:end_idx]
 
+                if self.hps.use_dataloader:
+                    minibatch = tree.map_structure(lambda x: x.to(self._device), minibatch)
                 minibatch = MultiAgentBatch(minibatch, end_idx - idx + 1)
                 nested_tensor_minibatch = NestedDict(minibatch.policy_batches)
                 with torch.no_grad():
@@ -373,9 +391,7 @@ class PPGTorchLearner(PPOTorchLearner):
         for tensor_minibatch in batch_iter(batch, minibatch_size, num_iters):
             # Make the actual in-graph/traced `_update` call. This should return
             # all tensor values (no numpy).
-            # print(f'{tensor_minibatch=}')
             nested_tensor_minibatch = NestedDict(tensor_minibatch.policy_batches)
-            # print(f'{nested_tensor_minibatch=}')
             (
                 fwd_out,
                 loss_per_module,
