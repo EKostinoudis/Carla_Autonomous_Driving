@@ -31,6 +31,7 @@ from models.CILv2_multiview.CILv2_env import CILv2_env
 from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
 from models.CILv2_multiview.CILv2_sub_env import CILv2_sub_env
 from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule, CILv2_RLModule_PT_Policy
+from models.CILv2_multiview.CILv2_multiagent_env import CILv2_MultiagentVecEnv
 
 from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
@@ -154,6 +155,16 @@ def main(args):
             num_workers = 0
         else:
             num_workers = 1
+    elif conf.get('use_multiagent_env', False):
+        env_name = 'CILv2_MultiagentVecEnv'
+        env_conf.update({'num_agents_per_server': num_agents_per_server})
+        batch_size = conf.get('extra_params', {}).get('train_batch_size', None)
+        if batch_size is None:
+            raise Exception(
+                'Set the number of "train_batch_size" in the "extra_params"'
+                'in order to calculate the roolout fragment length.'
+            )
+        rollout_fragment_length = math.ceil(batch_size / num_workers)
     elif conf.get('use_sub_env', False): 
         env_name = 'CILv2_sub_env'
 
@@ -168,6 +179,10 @@ def main(args):
     tune.register_env(
         'CILv2_sub_env',
         lambda rllib_conf: CILv2_sub_env(env_conf, path_to_conf, rllib_conf),
+    )
+    tune.register_env(
+        'CILv2_MultiagentVecEnv',
+        lambda rllib_conf: CILv2_MultiagentVecEnv(env_conf, path_to_conf, rllib_conf),
     )
 
     # update g_conf

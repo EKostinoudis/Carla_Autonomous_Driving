@@ -36,6 +36,11 @@ class WorldHandler():
         self.traffic_generator = None
         self.gps_route, self.vehicle_route = None, None
 
+        # for multi agent
+        self.vehicle_list = []
+        self.destination_list = []
+        self.gps_route_list, self.vehicle_route_list = [], []
+
         """
         run type can be:
             "scenario": for runing scenarios
@@ -43,6 +48,8 @@ class WorldHandler():
             otherwise: free ride
         """
         self.run_type = config.get('run_type', None)
+        self.multi_agent = config.get('multi_agent', False)
+        self.num_agents = config.get('num_agents_per_server', 0)
         logger.debug(f'Init: Run type: {self.run_type}')
 
         self.client = carla.Client(self.ip, self.port, config.get('worker_threads', 0))
@@ -185,8 +192,28 @@ class WorldHandler():
             )
 
             # create the ego vehicle
-            self.create_actor()
+            self.vehicle, self.destination = self.create_actor()
             trajectory = [self.vehicle.get_location(), self.destination]
+
+            self.vehicle_list, self.destination_list = [], []
+            self.gps_route_list = []
+            self.vehicle_route_list = []
+            if self.multi_agent:
+                self.vehicle_list.append(self.vehicle)
+                self.destination_list.append(self.destination)
+                trajectory_list = [trajectory]
+                for _ in range(1, self.num_agents):
+                    vehicle, destination = self.create_actor()
+                    self.destination_list.append(self.destination)
+                    self.vehicle_list.append(vehicle)
+                    self.destination_list.append(destination)
+                    trajectory_m = [vehicle.get_location(), destination]
+                    trajectory_list.append(trajectory_m)
+
+                for i in range(self.num_agents):
+                    gps_route, vehicle_route = interpolate_trajectory(self.world, trajectory_list[i])
+                    self.gps_route_list.append(gps_route)
+                    self.vehicle_route_list.append(vehicle_route)
 
             self.traffic_generator = TrafficGenerator(
                 self.client,
@@ -255,20 +282,25 @@ class WorldHandler():
         world = CarlaDataProvider.get_world()
         # vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('model3')[0]
         vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('vehicle.lincoln.mkz_2017')[0]
-        while self.vehicle is None:
+        vehicle = None
+        while vehicle is None:
             transform = random.choice(spawn_points)
 
-            self.vehicle = world.try_spawn_actor(
+            vehicle = world.try_spawn_actor(
                     vehicle_blueprint,
                     transform,
                     )
 
             world.tick()
-        CarlaDataProvider.register_actor(self.vehicle)
+        CarlaDataProvider.register_actor(vehicle)
 
-        self.destination = random.choice(spawn_points).location
+        destination = random.choice(spawn_points).location
+        '''
+        # don't even know why I used that, probably bug
         while self.destination == transform:
-            self.destination = random.choice(spawn_points).location
+            destination = random.choice(spawn_points).location
+        '''
+        return vehicle, destination
 
     def synchronous(self):
         # set synchronous mode

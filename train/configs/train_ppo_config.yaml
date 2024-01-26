@@ -39,6 +39,11 @@ use_vec_env: false
 # use CILv2_sub_env (runs the environment in a subprocess environment)
 use_sub_env: true
 
+# use CILv2_multiagent_env (run many vehicles in a single server, only works in
+# free ride mode)
+use_multiagent_env: false
+num_agents_per_server: 8 # number of agents in each environment
+
 no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
 
 # file to a checkpoint from which we start the training

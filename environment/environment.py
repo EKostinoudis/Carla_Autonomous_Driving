@@ -119,7 +119,7 @@ class Environment(gym.Env):
 
         self.destroy_sensors()
 
-        # if needed restart the carla server (mainly to avoid memory leaks)
+        # if restart is needed for the carla server (mainly to avoid memory leaks)
         if self.carla_launcher is not None:
             self.carla_launcher.reset(restart_server=self.restart_server)
             self.restart_server = False
@@ -341,15 +341,15 @@ class Environment(gym.Env):
         :return: (terminated, truncated)
         '''
         if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
-            return (True, True)
+            return (True, False)
         if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
-            return (True, True)
-        if not self.episode_alive: return (True, True)
-        if len(self.collision_detector.data) > 0: return (True, True)
+            return (True, False)
+        if not self.episode_alive: return (True, False)
+        if len(self.collision_detector.data) > 0: return (True, False)
         if self.termination_on_run:
             for test in self.tests[:2]:
                 if test.test_status == 'FAILURE':
-                    return (True, True)
+                    return (True, False)
 
         # TODO: check for max steps and maybe more???
 

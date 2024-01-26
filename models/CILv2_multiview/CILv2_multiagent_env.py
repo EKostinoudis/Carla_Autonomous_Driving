@@ -13,11 +13,12 @@ import random
 from PIL import Image
 import torch
 import torchvision.transforms.functional as TF
+from ray.rllib.env.vector_env import VectorEnv
 
 from configs import g_conf, merge_with_yaml, set_type_of_process
 from dataloaders.transforms import encode_directions_6
 
-from environment import Environment
+from environment.multiagent_environment import MultiagentVecEnv
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def checkpoint_parse_configuration_file(filename):
     return configuration_dict['yaml'], configuration_dict['checkpoint'], \
            configuration_dict['agent_name']
 
-class CILv2_env(gym.Env):
+class CILv2_MultiagentVecEnv(VectorEnv):
     def __init__(self,
                  env_config: DictConfig | dict,
                  path_to_conf_file: str,
@@ -46,10 +47,11 @@ class CILv2_env(gym.Env):
         if not isinstance(env_config, DictConfig):
             env_config = OmegaConf.create(dict(env_config))
 
-        self.return_reward_info = env_config.get('return_reward_info', False)
+        self.num_agents = env_config.get('num_agents_per_server', None)
+        if self.num_agents is None:
+            raise ValueError("Missing 'num_agents_per_server' value on config")
 
-        self.left_change_count = 0
-        self.right_change_count = 0
+        self.return_reward_info = env_config.get('return_reward_info', False)
 
         self.action_space = gym.spaces.Box(
             low=np.array([-1., -1.], dtype=np.float32),
@@ -88,28 +90,66 @@ class CILv2_env(gym.Env):
         self.env_config = env_config
         self.restart_env()
 
-    def reset(self, *, seed=None, options=None):
+        self.reset_list = [False for _ in range(self.num_agents)]
+        self.reset_state, self.reset_info = None, None
+
+        super().__init__(
+            observation_space=self.observation_space,
+            action_space=self.action_space,
+            num_envs=self.num_agents,
+        )
+
+    def get_sub_environments(self):
+        return self.env.get_sub_environments()
+
+    def reset_at(self, index, *, seed=None, options=None):
+        if self.reset_list[index]:
+            raise Exception(
+                f"Environment with index: {index}, reset two times."
+                f"Reset list: {self.reset_list}"
+            )
+        if not any(self.reset_list):
+            self.reset_state, self.reset_info = reset_all(self, *, seeds=None, options=None):
+        self.reset_list[index] = True
+        return self.reset_state[index], self.reset_info[index]
+
+    def vector_reset(self, *, seeds=None, options=None):
+        if any(self.reset_list):
+            raise Exception(
+                f"vector_reset: At least one environment reset two times. "
+                f"Reset list: {self.reset_list}"
+            )
+        self.reset_list = [True for _ in range(self.num_agents)]
+        return self.reset_all(seeds=seeds, options=options)
+
+    def reset_all(self, *, seeds=None, options=None):
         self.input_data = None
 
-        state, info = self.env.reset(seed=seed, options=options)
+        state, info = self.env.vector_reset(seeds=seeds, options=options)
 
         self.input_data = state
-        state = self.run_step()
+        state = [self.run_step(i) for i in range(self.num_agents)]
 
         return state, info
 
-    def step(self, action):
-        # action is the output of the model
-        action = self.process_control_outputs(action)
-        steer, throttle, brake = action
-        steer = float(steer)
-        throttle = float(throttle)
-        brake = float(brake)
+    def vector_step(self, actions):
+        self.reset_list = [False for _ in range(self.num_agents)]
+        self.reset_state, self.reset_info = None, None
 
-        state, reward, terminated, truncated, info = self.env.step([throttle, brake, steer])
+        # action is the output of the model
+        actions = [self.process_control_outputs(actions[i]) for i in range(self.num_agents)]
+        new_actions = []
+        for action in actions:
+            steer, throttle, brake = action
+            steer = float(steer)
+            throttle = float(throttle)
+            brake = float(brake)
+            new_actions.append([throttle, brake, steer])
+
+        state, reward, terminated, truncated, info = self.env.vector_step(new_actions)
 
         self.input_data = state
-        state = self.run_step()
+        state = [self.run_step(i) for i in range(self.num_agents)]
 
         return state, reward, terminated, truncated, info
 
@@ -117,32 +157,25 @@ class CILv2_env(gym.Env):
         # kill carla server if it exists
         if self.env is not None and self.env.carla_launcher is not None: self.env.carla_launcher.kill()
 
-        self.env = Environment(self.env_config)
+        self.env = MultiagentVecEnv(self.env_config)
 
-    def run_step(self):
-        self.norm_rgb = torch.stack(
-            [self.process_image(self.input_data[camera_type][1]) \
+    def run_step(self, idx: int):
+        norm_rgb = torch.stack(
+            [self.process_image(self.input_data[idx][camera_type][1]) \
                 for camera_type in g_conf.DATA_USED],
         ).unsqueeze(0)
 
-        self.norm_speed = torch.tensor(
-            [self.process_speed(self.input_data['SPEED'][1]['speed'])],
+        norm_speed = torch.tensor(
+            [self.process_speed(self.input_data[idx]['SPEED'][1]['speed'])],
             dtype=torch.float32,
         ).unsqueeze(0)
 
-        self.direction = torch.tensor(
-            encode_directions_6(self.env.navigation_commad.value),
+        direction = torch.tensor(
+            encode_directions_6(self.env.navigation_commad[idx].value),
             dtype=torch.float32,
         ).unsqueeze(0)
 
-        return self.norm_rgb, self.direction, self.norm_speed
-
-    def close(self):
-        self.norm_rgb = None
-        self.norm_speed = None
-        self.direction = None
-        self.checkpoint = None
-        self.env.close()
+        return norm_rgb, direction, norm_speed
 
     def process_image(self, image):
         image = Image.fromarray(image[:,:,:3][:, :, ::-1])
@@ -160,12 +193,12 @@ class CILv2_env(gym.Env):
 
     def process_control_outputs(self, action_outputs):
         if g_conf.ACCELERATION_AS_ACTION:
-            steer, self.acceleration = action_outputs[0], action_outputs[1]
-            if self.acceleration >= 0.0:
-                throttle = self.acceleration
+            steer, acceleration = action_outputs[0], action_outputs[1]
+            if acceleration >= 0.0:
+                throttle = acceleration
                 brake = 0.0
             else:
-                brake = np.abs(self.acceleration)
+                brake = np.abs(acceleration)
                 throttle = 0.0
         else:
             steer, throttle, brake = action_outputs[0], action_outputs[1], action_outputs[2]
