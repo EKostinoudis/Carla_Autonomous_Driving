@@ -112,32 +112,53 @@ class WorldHandler():
                     max_substeps=self.max_substeps,
                     )
             self.configs = self.scenario_runner.create_configs()
-        else:
-            if "num_of_vehicles" in config and "num_of_walkers" in config:
-                self.num_of_vehicles = config.get('num_of_vehicles', 0)
-                self.num_of_walkers = config.get('num_of_walkers', 0)
+        else: # FREE RIDE
+            self.training_mode = config.get('training_mode', False)
+            if self.training_mode:
+                def map_picker():
+                    while True:
+                        yield random.choice([
+                            'Town01',
+                            'Town02',
+                            'Town03',
+                            'Town04',
+                            'Town06',
+                        ])
+                self.map_picker = map_picker()
+                def traffic_state_picker():
+                    while True:
+                        yield random.choice([
+                            TrafficState.Light,
+                            TrafficState.Medium,
+                            TrafficState.Busy,
+                        ])
+                self.traffic_state_picker = traffic_state_picker()
             else:
-                # if the traffic state is given and it is valid use it,
-                # else pick a random state
-                traffic_state = config.get('traffic_state', None)
-                traffic_state = to_traffic_state(traffic_state)
-                if traffic_state is None:
-                    traffic_state = random.choice(list(TrafficState))
-                self.num_of_vehicles, self.num_of_walkers = get_traffic(
-                    CarlaDataProvider.get_map().name[-6:],
-                    traffic_state,
-                )
+                if "num_of_vehicles" in config and "num_of_walkers" in config:
+                    self.num_of_vehicles = config.get('num_of_vehicles', 0)
+                    self.num_of_walkers = config.get('num_of_walkers', 0)
+                else:
+                    # if the traffic state is given and it is valid use it,
+                    # else pick a random state
+                    traffic_state = config.get('traffic_state', None)
+                    traffic_state = to_traffic_state(traffic_state)
+                    if traffic_state is None:
+                        traffic_state = random.choice(list(TrafficState))
+                    self.num_of_vehicles, self.num_of_walkers = get_traffic(
+                        CarlaDataProvider.get_map().name[-6:],
+                        traffic_state,
+                    )
+
+                if self.map is not None:
+                    # load world if given
+                    logger.info(f'Loading map: {self.map}')
+                    # self.asynchronous()
+                    world = self.client.load_world(self.map)
 
             # create the weather handler
             self.weather_handler = WeatherHandler()
             self.random_weather = config.get('random_weather', False)
             self.dynamic_weather = config.get('dynamic_weather', False)
-
-            if self.map is not None:
-                # load world if given
-                logger.info(f'Loading map: {self.map}')
-                # self.asynchronous()
-                world = self.client.load_world(self.map)
 
             self.world = self.client.get_world()
 
@@ -176,14 +197,22 @@ class WorldHandler():
             self.vehicle = self.scenario_runner.vehicle
             trajectory = self.scenario_runner.trajectory
         else:
-            # reload the world
             self.synchronous()
-            self.client.reload_world(True)
+            if self.training_mode:
+                CarlaDataProvider.set_world(next(self.map_picker))
+            else:
+                self.client.reload_world(True)
             self.synchronous()
 
             # init CarlaDataProvider
             self.world = self.client.get_world()
             CarlaDataProvider.set_world(self.world)
+
+            if self.training_mode:
+                self.num_of_vehicles, self.num_of_walkers = get_traffic(
+                    CarlaDataProvider.get_map().name[-6:],
+                    next(self.traffic_state_picker),
+                )
 
             # weather control
             self.weather_handler.reset(
@@ -221,7 +250,7 @@ class WorldHandler():
                 self.traffic_manager,
                 self.num_of_vehicles,
                 self.num_of_walkers,
-                )
+            )
 
         self.gps_route, self.vehicle_route = interpolate_trajectory(self.world, trajectory)
 
@@ -261,13 +290,15 @@ class WorldHandler():
     def clean(self):
         if self.scenario_runner is not None:
             self.scenario_runner.clean()
-        '''
         else:
-            # otherwise the CarlaDataProvider will clean the vehicle
-            if self.vehicle is not None:
-                self.vehicle.destroy()
-                self.vehicle = None
-        '''
+            if self.multi_agent:
+                for vehicle in self.vehicle_list:
+                    if vehicle is not None:
+                        vehicle.destroy()
+            else:
+                if self.vehicle is not None:
+                    self.vehicle.destroy()
+                    self.vehicle = None
 
         CarlaDataProvider.cleanup()
         CarlaDataProvider.set_client(self.client)

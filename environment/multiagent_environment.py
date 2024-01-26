@@ -63,11 +63,11 @@ class MultiagentVecEnv(VectorEnv):
                 seed=seed,
                 )
 
+        self.sensors_config = config.sensors
+
         # define observation space from sensors_config
         self.observation_space = self.create_observation_space()
         self.observation_space.seed(seed)
-
-        self.sensors_config = config.sensors
 
         self.restart_server = False
         self.use_launcher = config.get('use_carla_launcher', False)
@@ -144,7 +144,7 @@ class MultiagentVecEnv(VectorEnv):
                 f"vector_reset: At least one environment reset two times. "
                 f"Reset list: {self.reset_list}"
             )
-        self.reset_list = [True for _ in range(self.num_agents)]
+        self.reset_list = [False for _ in range(self.num_agents)]
         return self.reset_all(seeds=seeds, options=options)
 
     def reset_all(self, *, seeds=None, options=None):
@@ -200,9 +200,10 @@ class MultiagentVecEnv(VectorEnv):
         CarlaDataProvider.get_world().tick()
         CarlaDataProvider.get_world().tick()
 
-        new_state, reward, terminated, truncated, info = self.step([0, 0, 0])
-        # NOTE: we return an empy dict because we don't log at reset
-        return new_state, {}
+        actions = [[0, 0, 0] for _ in range(self.num_agents)]
+        new_state, reward, terminated, truncated, info = self.vector_step(actions)
+        infos = [{} for _ in range(self.num_agents)]
+        return new_state, infos
 
     def reset_at(self, index, *, seed=None, options=None):
         if self.reset_list[index]:
@@ -211,8 +212,12 @@ class MultiagentVecEnv(VectorEnv):
                 f"Reset list: {self.reset_list}"
             )
         if not any(self.reset_list):
-            self.reset_state, self.reset_info = reset_all(self, *, seeds=None, options=None):
+            self.reset_state, self.reset_info = self.reset_all(seeds=None, options=None)
         self.reset_list[index] = True
+
+        if all(self.reset_list):
+            self.reset_list = [False for _ in range(self.num_agents)]
+
         return self.reset_state[index], self.reset_info[index]
 
     def vector_step(self, actions):
@@ -247,11 +252,11 @@ class MultiagentVecEnv(VectorEnv):
         self.navigation_commad, self.reached_wp = [], []
         for i in range(self.num_agents):
             prev_len = len(self.route_planner[i].gps_route)
-            self.navigation_commad = self.route_planner[i].step(
+            self.navigation_commad.append(self.route_planner[i].step(
                 new_state[i]['GPS'][1],
                 new_state[i]['IMU'][1],
-            )
-            self.reached_wp[i] = prev_len > len(self.route_planner[i].gps_route)
+            ))
+            self.reached_wp.append(prev_len > len(self.route_planner[i].gps_route))
 
         if self.render_rgb_camera_flag: self.render_rgb_camera()
 
@@ -436,8 +441,8 @@ class MultiagentVecEnv(VectorEnv):
         # this is used mainly to update the state at each step
         self.tests = [[] for _ in range(self.num_agents)]
         for i in range(self.num_agents):
-            self.tests[i].append(RunningRedLightTest(self.vehicle))
-            self.tests[i].append(RunningStopTest(self.vehicle))
+            self.tests[i].append(RunningRedLightTest(self.vehicles[i]))
+            self.tests[i].append(RunningStopTest(self.vehicles[i]))
 
     def get_velocity(self, idx: int) -> float:
         '''Returns the velocity of the vehicle in km/h'''
@@ -546,9 +551,10 @@ class MultiagentVecEnv(VectorEnv):
         In order to destroy ALL the actors in the world, use the
         `destroy_actors_all` method.
         '''
-        for i in range(self.num_agents):
-            for sensor in self.sensors_envs[i]: sensor.destroy()
-            for s_i, _ in enumerate(self.sensors):
+        for sensors in self.sensors_envs:
+            for sensor in sensors: sensor.destroy()
+        for i in range(len(self.sensors)):
+            for s_i, _ in enumerate(self.sensors[i]):
                 if self.sensors[i][s_i] is not None:
                     self.sensors[i][s_i].stop()
                     self.sensors[i][s_i].destroy()
@@ -640,14 +646,14 @@ class MultiagentVecEnv(VectorEnv):
     def reset_env_sensors(self):
         world = CarlaDataProvider.get_world()
         for i in range(self.num_agents):
-            if self.render_rgb_camera_flag:
             self.collision_detectors[i].reset(
                     self.vehicles[i],
                     world,
                     lambda event: event.other_actor.type_id, # blueprint
                     )
-        self.rgb_camera.reset(
-                self.vehicles[i],
+        if self.render_rgb_camera_flag:
+            self.rgb_camera.reset(
+                self.vehicles[0],
                 world,
                 extract_rgb_data,
                 )

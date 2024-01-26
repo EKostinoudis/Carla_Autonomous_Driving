@@ -32,6 +32,7 @@ from models.CILv2_multiview.CILv2_vec_env import CILv2_vec_env
 from models.CILv2_multiview.CILv2_sub_env import CILv2_sub_env
 from models.CILv2_multiview.CILv2_RLModule import CILv2_RLModule, CILv2_RLModule_PT_Policy
 from models.CILv2_multiview.CILv2_multiagent_env import CILv2_MultiagentVecEnv
+from models.CILv2_multiview.CILv2_multiagent_sub_env import CILv2_multiagent_sub_env
 
 from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.rllib.models.torch.torch_action_dist import TorchBeta
@@ -155,8 +156,16 @@ def main(args):
             num_workers = 0
         else:
             num_workers = 1
-    elif conf.get('use_multiagent_env', False):
+    elif conf.get('use_multiagent_env', False) or conf.get('use_multiagent_sub_env', False):
         env_name = 'CILv2_MultiagentVecEnv'
+        if conf.get('use_multiagent_sub_env', False):
+            env_name = 'CILv2_multiagent_sub_env'
+
+        num_agents_per_server = conf.get('num_agents_per_server', None)
+        if num_agents_per_server is None:
+            raise ValueError(
+                "Missing 'num_agents_per_server' argument from config"
+            )
         env_conf.update({'num_agents_per_server': num_agents_per_server})
         batch_size = conf.get('extra_params', {}).get('train_batch_size', None)
         if batch_size is None:
@@ -164,7 +173,8 @@ def main(args):
                 'Set the number of "train_batch_size" in the "extra_params"'
                 'in order to calculate the roolout fragment length.'
             )
-        rollout_fragment_length = math.ceil(batch_size / num_workers)
+        rollout_fragment_length = \
+                  math.ceil(batch_size / (max(num_workers, 1) * num_agents_per_server))
     elif conf.get('use_sub_env', False): 
         env_name = 'CILv2_sub_env'
 
@@ -183,6 +193,10 @@ def main(args):
     tune.register_env(
         'CILv2_MultiagentVecEnv',
         lambda rllib_conf: CILv2_MultiagentVecEnv(env_conf, path_to_conf, rllib_conf),
+    )
+    tune.register_env(
+        'CILv2_multiagent_sub_env',
+        lambda rllib_conf: CILv2_multiagent_sub_env(env_conf, path_to_conf, rllib_conf),
     )
 
     # update g_conf

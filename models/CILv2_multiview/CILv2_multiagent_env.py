@@ -109,8 +109,11 @@ class CILv2_MultiagentVecEnv(VectorEnv):
                 f"Reset list: {self.reset_list}"
             )
         if not any(self.reset_list):
-            self.reset_state, self.reset_info = reset_all(self, *, seeds=None, options=None):
+            self.reset_state, self.reset_info = self.reset_all(seeds=None, options=None)
         self.reset_list[index] = True
+
+        if all(self.reset_list):
+            self.reset_list = [False for _ in range(self.num_agents)]
         return self.reset_state[index], self.reset_info[index]
 
     def vector_reset(self, *, seeds=None, options=None):
@@ -119,7 +122,7 @@ class CILv2_MultiagentVecEnv(VectorEnv):
                 f"vector_reset: At least one environment reset two times. "
                 f"Reset list: {self.reset_list}"
             )
-        self.reset_list = [True for _ in range(self.num_agents)]
+        self.reset_list = [False for _ in range(self.num_agents)]
         return self.reset_all(seeds=seeds, options=options)
 
     def reset_all(self, *, seeds=None, options=None):
