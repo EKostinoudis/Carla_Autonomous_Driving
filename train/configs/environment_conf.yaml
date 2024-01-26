@@ -66,7 +66,7 @@ criteria_enable: true
 # run_type: free ride # can be w/e except route and scenario
 #
 # In training mode, we pick a random map (Towns: 1, 2, 3, 4, 6) and weather
-# every reset. Also, we pick between light, medium and busy traffic contitions.
+# every reset. Also, we pick between zero, light, medium and busy traffic contitions.
 # training_mode: true
 # map: null
 #

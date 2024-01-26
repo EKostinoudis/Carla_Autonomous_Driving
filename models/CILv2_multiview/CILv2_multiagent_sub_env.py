@@ -99,7 +99,7 @@ class VecEnvWrapper():
 
     def reset_at(self, index, *, seed=None, options=None):
         self.conn.send((
-            EnvCommandVec.vector_reset,
+            EnvCommandVec.reset_at,
             {
                 'index': index,
                 'seed': seed,
@@ -231,7 +231,7 @@ class CILv2_multiagent_sub_env(VectorEnv):
 
                 self.env_config.update({'tm_port': find_free_port()})
                 self.env_proc = Process(
-                    target=handle_env,
+                    target=handle_vec_env,
                     args=(self.env_config, self.path_to_conf_file),
                 )
                 self.env_proc.start()
@@ -248,6 +248,18 @@ class CILv2_multiagent_sub_env(VectorEnv):
         for i in range(10):
             try:
                 state, info = self.env.vector_reset(seeds=seeds, options=options)
+            except Exception as e:
+                logger.warning(f'R{i}: eset: Got exception: {e}')
+                logger.warning(traceback.format_exc())
+                self.restart_env()
+            else:
+                break
+        return state, info
+
+    def reset_at(self, index, *, seed=None, options=None):
+        for i in range(10):
+            try:
+                state, info = self.env.reset_at(index, seed=seed, options=options)
             except Exception as e:
                 logger.warning(f'R{i}: eset: Got exception: {e}')
                 logger.warning(traceback.format_exc())

@@ -128,6 +128,7 @@ class WorldHandler():
                 def traffic_state_picker():
                     while True:
                         yield random.choice([
+                            TrafficState.Zero,
                             TrafficState.Light,
                             TrafficState.Medium,
                             TrafficState.Busy,
@@ -199,7 +200,7 @@ class WorldHandler():
         else:
             self.synchronous()
             if self.training_mode:
-                CarlaDataProvider.set_world(next(self.map_picker))
+                world = self.client.load_world(next(self.map_picker))
             else:
                 self.client.reload_world(True)
             self.synchronous()
