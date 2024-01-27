@@ -214,6 +214,8 @@ class WorldHandler():
                     CarlaDataProvider.get_map().name[-6:],
                     next(self.traffic_state_picker),
                 )
+                if self.multi_agent:
+                    self.num_of_vehicles = max(0, self.num_of_vehicles - self.num_agents)
 
             # weather control
             self.weather_handler.reset(
