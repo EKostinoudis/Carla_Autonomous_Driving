@@ -84,13 +84,23 @@ WEATHER_PRESETS = [
     carla.WeatherParameters.WetSunset,
 ]
 
+TRAIN_WEATHER_PRESETS = [
+    carla.WeatherParameters.ClearNoon,
+    carla.WeatherParameters.WetNoon,
+    carla.WeatherParameters.HardRainNoon,
+    carla.WeatherParameters.ClearSunset,
+]
+
 
 class WeatherHandler():
-    def reset(self, weather=None, random_weather=False, dynamic_weather=False):
+    def reset(self, weather=None, random_weather=False, dynamic_weather=False, training_mode=True):
         self.dynamic_weather = dynamic_weather
         if weather is None:
             if random_weather:
-                weather = choice(WEATHER_PRESETS)
+                if training_mode:
+                    weather = choice(TRAIN_WEATHER_PRESETS)
+                else:
+                    weather = choice(WEATHER_PRESETS)
             else:
                 # get current weather
                 weather = CarlaDataProvider.get_world().get_weather()
