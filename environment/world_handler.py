@@ -231,12 +231,14 @@ class WorldHandler():
             self.gps_route_list = []
             self.vehicle_route_list = []
             if self.multi_agent:
+                # for the first vehicle
                 self.vehicle_list.append(self.vehicle)
                 self.destination_list.append(self.destination)
                 trajectory_list = [trajectory]
+
+                # rest vehicles
                 for _ in range(1, self.num_agents):
                     vehicle, destination = self.create_actor()
-                    self.destination_list.append(self.destination)
                     self.vehicle_list.append(vehicle)
                     self.destination_list.append(destination)
                     trajectory_m = [vehicle.get_location(), destination]

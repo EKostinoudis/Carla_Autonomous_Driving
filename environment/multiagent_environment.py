@@ -18,6 +18,7 @@ from .route_planner import RoutePlanner
 from .carla_launcher import CarlaLauncher
 from .fake_env import FakeEnv
 
+from srunner.tools.route_manipulation import interpolate_trajectory
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
     RunningStopTest,
@@ -323,7 +324,27 @@ class MultiagentVecEnv(VectorEnv):
         if not self.return_reward_info:
             info = [{} for _ in range(self.num_agents)]
 
+        # if any vehicle reached the destination, reset the destination
+        for i in range(self.num_agents):
+            if not self.episode_alive[i]:
+                self.update_destination(i)
+
         return new_state, reward, terminated, truncated, info
+
+    def update_destination(self, idx: int):
+        destination = random.choice(CarlaDataProvider.get_map().get_spawn_points())
+        self.world_handler.destination_list[idx] = destination
+        trajectory = [self.vehicles.get_location(), destination]
+        gps_route, vehicle_route = interpolate_trajectory(
+            self.world_handler.world,
+            trajectory,
+        )
+        self.world_handler.gps_route_list[idx] = gps_route
+        self.world_handler.vehicle_route_list[idx] = vehicle_route
+        self.route_planner[idx] = RoutePlanner(
+            self.world_handler.gps_route_list[idx],
+            self.world_handler.vehicle_route_list[idx],
+        )
 
     def render(self): pass # currently empty
 
@@ -427,7 +448,7 @@ class MultiagentVecEnv(VectorEnv):
             return (True, False)
         if self.out_of_lane_count[idx] * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
             return (True, False)
-        if not self.episode_alive[idx]: return (True, False)
+        # if not self.episode_alive[idx]: return (True, False)
         if len(self.collision_detectors[idx].data) > 0: return (True, False)
         if self.termination_on_run:
             for test in self.tests[idx][:2]:
