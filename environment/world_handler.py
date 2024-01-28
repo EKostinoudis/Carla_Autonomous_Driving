@@ -330,7 +330,12 @@ class WorldHandler():
             world.tick()
         CarlaDataProvider.register_actor(vehicle)
 
-        destination = random.choice(spawn_points).location
+        # make sure the destination isn't near the spawn location
+        while True:
+            destination = random.choice(spawn_points).location
+            if vehicle.get_location().distance(destination) > 20:
+                break
+
         '''
         # don't even know why I used that, probably bug
         while self.destination == transform:

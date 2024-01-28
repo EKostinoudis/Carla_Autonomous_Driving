@@ -332,9 +332,13 @@ class MultiagentVecEnv(VectorEnv):
         return new_state, reward, terminated, truncated, info
 
     def update_destination(self, idx: int):
-        destination = random.choice(CarlaDataProvider.get_map().get_spawn_points())
+        while True:
+            destination = random.choice(CarlaDataProvider.get_map().get_spawn_points()).location
+            if self.vehicles[idx].get_location().distance(destination) > 20:
+                break
+
         self.world_handler.destination_list[idx] = destination
-        trajectory = [self.vehicles.get_location(), destination]
+        trajectory = [self.vehicles[idx].get_location(), destination]
         gps_route, vehicle_route = interpolate_trajectory(
             self.world_handler.world,
             trajectory,
