@@ -11,7 +11,9 @@ import gymnasium as gym
 import logging
 import traceback
 import socket
+import struct
 from contextlib import closing
+from multiprocessing.connection import Connection, answer_challenge, deliver_challenge
 
 from ray.rllib.env.env_context import EnvContext
 
@@ -20,6 +22,34 @@ from .CILv2_env import CILv2_env
 from environment.carla_launcher import CarlaLauncher
 
 logger = logging.getLogger(__name__)
+
+def ClientWithTimeout(address, authkey, timeout):
+
+    with socket.socket(socket.AF_INET) as s:
+        s.setblocking(True)
+        s.connect(address)
+
+        # We'd like to call s.settimeout(timeout) here, but that won't work.
+
+        # Instead, prepare a C "struct timeval" to specify timeout. Note that
+        # these field sizes may differ by platform.
+        seconds = int(timeout)
+        microseconds = int((timeout - seconds) * 1e6)
+        timeval = struct.pack("@LL", seconds, microseconds)
+
+        # And then set the SO_RCVTIMEO (receive timeout) option with this.
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
+
+        # Now create the connection as normal.
+        c = Connection(s.detach())
+
+    # The following code will now fail if a socket timeout occurs.
+
+    # answer_challenge(c, authkey)
+    # deliver_challenge(c, authkey)
+
+    return c
+
 
 class EnvCommand(Enum):
     init = 0
@@ -62,7 +92,8 @@ def connect_to_port(port, timeout=5):
 
     while True:
         try:
-            conn = Client(('localhost', port))
+            # conn = Client(('localhost', port))
+            conn = ClientWithTimeout(('localhost', port), None, 100)
             return conn
         except:
             if time.perf_counter() - start < timeout:
