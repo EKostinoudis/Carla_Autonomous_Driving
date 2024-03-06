@@ -18,6 +18,7 @@ out_of_lane_termination_seconds: 5
 seed: 0
 
 # reward contants
+reward_speed_penalty: false
 reward_failure: -1.0
 reward_success: 1.0
 reward_wrong_lane: -0.1
