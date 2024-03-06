@@ -83,6 +83,7 @@ class Environment(gym.Env):
         self.reward_speed = config.get('reward_speed', 0.1)
         self.reward_max_speed = config.get('reward_max_speed', 30.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
+        self.reward_speed_penalty = config.get('reward_speed_penalty', False)
 
         self.vehicle = None
         self.sensors_env = []
@@ -264,6 +265,7 @@ class Environment(gym.Env):
         self.out_of_road_reward = 0.
         self.steering_reward = 0.
         self.speeding_reward = 0.
+        self.collision_reward = 0.
         self.reached_wp_reward = self.reached_wp * self.reward_waypoint
 
         # end of scenario reward
@@ -275,12 +277,22 @@ class Environment(gym.Env):
                 self.episode_end_success_reward = self.reward_success
                 return self.episode_end_success_reward
 
+        if len(self.collision_detector.data) > 0:
+            if self.reward_speed_penalty:
+                self.collision_reward = self.episode_end_fail_reward - self.get_velocity()
+            else:
+                self.collision_reward = self.episode_end_fail_reward
+            return self.collision_reward
+
         # stop and red light tests
         for test in self.tests[:2]:
             # print(test.name, test.test_status)
             if test.test_status == 'FAILURE':
                 test.test_status = 'RESET'
-                self.sign_run_reward = self.reward_failure
+                if self.reward_speed_penalty:
+                    self.sign_run_reward = self.reward_failure - self.get_velocity()
+                else:
+                    self.sign_run_reward = self.reward_failure
                 return self.sign_run_reward
 
         # vehicle too long stopped
@@ -325,6 +337,7 @@ class Environment(gym.Env):
             'out_of_road_reward': self.out_of_road_reward,
             'steering_reward': self.steering_reward,
             'speeding_reward': self.speeding_reward,
+            'collision_reward': self.collision_reward,
             'reached_wp_reward': self.reached_wp_reward,
             'speed': self.get_velocity(),
             'throttle': self.vehicle_control.throttle,
