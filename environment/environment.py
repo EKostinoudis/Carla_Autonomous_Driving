@@ -84,11 +84,15 @@ class Environment(gym.Env):
         self.reward_max_speed = config.get('reward_max_speed', 30.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
+        self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
+        self.reward_negative_speed_overshoot = config.get('reward_negative_speed_overshoot', True)
 
         self.vehicle = None
         self.sensors_env = []
         self.sensors = []
         self.vehicle_control = carla.VehicleControl()
+
+        self.dynamic_speed = None
 
         # initialize the sensors that are used in the environment
         self.init_env_sensors()
@@ -150,6 +154,9 @@ class Environment(gym.Env):
         )
 
         self.init_tests()
+
+        if self.reward_dynamic_max_speed:
+            self.dynamic_speed = DynamicSpeed(self.vehicle, self.reward_max_speed)
 
         # reset controls
         self.vehicle_control.throttle = 0.
@@ -317,10 +324,19 @@ class Environment(gym.Env):
         # if the vehicle has speed lower than the given max, scale linearly the reward
         # else (above the speed limit), give penalty
         speed = self.get_velocity()
-        if speed <= self.reward_max_speed:
-            self.speeding_reward = self.reward_speed * (speed / self.reward_max_speed)
+        if self.reward_dynamic_max_speed:
+            desired_speed = self.dynamic_speed.get()
         else:
-            self.speeding_reward = -self.reward_speed
+            desired_speed = self.reward_max_speed
+
+        if self.reward_negative_speed_overshoot:
+            if speed <= self.reward_max_speed:
+                self.speeding_reward = self.reward_speed * (speed / self.reward_max_speed)
+            else:
+                self.speeding_reward = -self.reward_speed
+        else:
+            self.speeding_reward = self.reward_speed * \
+                (1 - abs(speed - desired_speed) / self.reward_max_speed)
 
         return self.not_moving_reward + \
                self.out_of_road_reward + \
