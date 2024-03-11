@@ -14,6 +14,7 @@ from .sensor import *
 from .sensor_interface import SensorInterface
 from .route_planner import RoutePlanner
 from .carla_launcher import CarlaLauncher
+from dynamic_speed import DynamicSpeed
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
@@ -338,7 +339,7 @@ class Environment(gym.Env):
 
         if self.reward_negative_speed_overshoot:
             if speed <= self.reward_max_speed:
-                self.speeding_reward = self.reward_speed * (speed / self.reward_max_speed)
+                self.speeding_reward = self.reward_speed * (speed / desired_speed)
             else:
                 self.speeding_reward = -self.reward_speed
         else:
