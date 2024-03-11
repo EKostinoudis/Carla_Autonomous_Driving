@@ -50,6 +50,9 @@ class Environment(gym.Env):
         else:
             self.carla_launcher = None
 
+        # how many times to repeat the given action a step of the env
+        self.repeat_action = config.get('repeat_action', 0)
+
         # create world handler
         self.world_handler = WorldHandler(config)
 
@@ -180,69 +183,73 @@ class Environment(gym.Env):
 
         self.apply_action(action)
 
-        # world (server) tick
-        CarlaDataProvider.get_world().tick()
+        for _ in range(self.repeat_action + 1):
+            # world (server) tick
+            CarlaDataProvider.get_world().tick()
 
-        # update scenario
-        self.episode_alive, self.task_failed = self.world_handler.step()
+            # update scenario
+            self.episode_alive, self.task_failed = self.world_handler.step()
 
-        # get teh new state
-        new_state = self.get_state()
+            # get teh new state
+            new_state = self.get_state()
 
-        # get the new command for navigation
-        prev_len = len(self.route_planner.gps_route)
-        self.navigation_commad = self.route_planner.step(
-            new_state['GPS'][1],
-            new_state['IMU'][1],
-        )
-        self.reached_wp = prev_len > len(self.route_planner.gps_route)
+            # get the new command for navigation
+            prev_len = len(self.route_planner.gps_route)
+            self.navigation_commad = self.route_planner.step(
+                new_state['GPS'][1],
+                new_state['IMU'][1],
+            )
+            self.reached_wp = prev_len > len(self.route_planner.gps_route)
 
-        if self.render_rgb_camera_flag: self.render_rgb_camera()
+            if self.render_rgb_camera_flag: self.render_rgb_camera()
 
-        # update the state of the tests
-        for test in self.tests: _ = test.update()
+            # update the state of the tests
+            for test in self.tests: _ = test.update()
 
-        # check if the vehicle is out of road or lane
-        self.in_junction = False
-        self.out_of_road = self.check_out_of_road()
-        self.out_of_lane = self.check_out_of_lane()
-        if not self.in_junction:
-            self.in_junction_count = 0
-            if self.out_of_road or self.out_of_lane:
-                self.out_of_lane_count += 1
+            # check if the vehicle is out of road or lane
+            self.in_junction = False
+            self.out_of_road = self.check_out_of_road()
+            self.out_of_lane = self.check_out_of_lane()
+            if not self.in_junction:
+                self.in_junction_count = 0
+                if self.out_of_road or self.out_of_lane:
+                    self.out_of_lane_count += 1
+                else:
+                    self.out_of_lane_count = 0
             else:
-                self.out_of_lane_count = 0
-        else:
-            if self.out_of_road or self.out_of_lane:
-                self.out_of_lane_count += 1
-            self.in_junction_count += 1
+                if self.out_of_road or self.out_of_lane:
+                    self.out_of_lane_count += 1
+                self.in_junction_count += 1
 
-        # update the stopped counter
-        if self.get_velocity() < 0.5:
-            self.stopped_count += 1
-        else:
-            self.stopped_count = 0
+            # update the stopped counter
+            if self.get_velocity() < 0.5:
+                self.stopped_count += 1
+            else:
+                self.stopped_count = 0
 
-        if self.debug:
-            if not self.episode_alive:
-                logger.debug(f'End episode. Task failed: {self.task_failed}')
-            logger.debug(f'collision_detector: {self.collision_detector.data}')
-            logger.debug(f'Out of road: {self.out_of_road}')
-            logger.debug(f'Out of lane: {self.out_of_lane}')
-            logger.debug(f'stopped count: {self.stopped_count}')
-            logger.debug(f'Velocity: {self.get_velocity():6.02f} '
-                         f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
+            if self.debug:
+                if not self.episode_alive:
+                    logger.debug(f'End episode. Task failed: {self.task_failed}')
+                logger.debug(f'collision_detector: {self.collision_detector.data}')
+                logger.debug(f'Out of road: {self.out_of_road}')
+                logger.debug(f'Out of lane: {self.out_of_lane}')
+                logger.debug(f'stopped count: {self.stopped_count}')
+                logger.debug(f'Velocity: {self.get_velocity():6.02f} '
+                             f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
 
-        # calculate the reward
-        reward = self.get_reward()
+            # calculate the reward
+            reward = self.get_reward()
 
-        # get the terminated and truncated values
-        terminated, truncated = self.episode_end()
+            # get the terminated and truncated values
+            terminated, truncated = self.episode_end()
 
-        if self.return_reward_info:
-            info = self.create_info_for_logging()
-        else:
-            info = {}
+            if self.return_reward_info:
+                info = self.create_info_for_logging()
+            else:
+                info = {}
+
+            # if the episode terminated or truncated do not perform more steps
+            if terminated or truncated: break
 
         # returns (next state, reward, terminated, truncated, info)
         return new_state, reward, terminated, truncated, info
