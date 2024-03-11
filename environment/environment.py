@@ -14,7 +14,7 @@ from .sensor import *
 from .sensor_interface import SensorInterface
 from .route_planner import RoutePlanner
 from .carla_launcher import CarlaLauncher
-from dynamic_speed import DynamicSpeed
+from .dynamic_speed import DynamicSpeed
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
