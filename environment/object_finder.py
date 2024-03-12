@@ -121,24 +121,24 @@ class ObsManagerVehicle(ObsManagerBase):
         self._max_detection_number = obs_configs['max_detection_number']
         self._distance_threshold = obs_configs['distance_threshold']
 
-        self._parent_actor = None
+        self.vehicle = None
         self._world = None
         self._map = None
 
-    def attach_ego_vehicle(self, parent_actor):
-        self._parent_actor = parent_actor
-        self._world = self._parent_actor.vehicle.get_world()
-        self._map = self._world.get_map()
+    def attach_ego_vehicle(self, vehicle, world, map):
+        self.vehicle = vehicle
+        self._world = world
+        self._map = map
 
     def get_observation(self):
-        ev_transform = self._parent_actor.vehicle.get_transform()
+        ev_transform = self.vehicle.get_transform()
         ev_location = ev_transform.location
         def dist_to_ev(w): return w.get_location().distance(ev_location)
 
         surrounding_vehicles = []
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         for vehicle in vehicle_list:
-            has_different_id = self._parent_actor.vehicle.id != vehicle.id
+            has_different_id = self.vehicle.id != vehicle.id
             is_within_distance = dist_to_ev(vehicle) <= self._distance_threshold
             if has_different_id and is_within_distance:
                 surrounding_vehicles.append(vehicle)
@@ -170,7 +170,7 @@ class ObsManagerVehicle(ObsManagerBase):
             lane_id.append(0)
 
         obs_dict = {
-            'frame': self._world.get_snapshot().frame,
+            # 'frame': self._world.get_snapshot().frame,
             'binary_mask': np.array(binary_mask, dtype=np.int8),
             'location': np.array(location, dtype=np.float32),
             'rotation': np.array(rotation, dtype=np.float32),
@@ -182,7 +182,7 @@ class ObsManagerVehicle(ObsManagerBase):
         return obs_dict
 
     def clean(self):
-        self._parent_actor = None
+        self.vehicle = None
         self._world = None
         self._map = None
 
@@ -199,16 +199,16 @@ class ObsManagerPedestrian(ObsManagerBase):
     def __init__(self, obs_configs):
         self._max_detection_number = obs_configs['max_detection_number']
         self._distance_threshold = obs_configs['distance_threshold']
-        self._parent_actor = None
+        self.vehicle = None
         self._world = None
 
-    def attach_ego_vehicle(self, parent_actor):
-        self._parent_actor = parent_actor
-        self._world = parent_actor.vehicle.get_world()
-        self._map = self._world.get_map()
+    def attach_ego_vehicle(self, vehicle, world, map):
+        self.vehicle = vehicle
+        self._world = world
+        self._map = map
 
     def get_observation(self):
-        ev_transform = self._parent_actor.vehicle.get_transform()
+        ev_transform = self.vehicle.get_transform()
         ev_location = ev_transform.location
         def dist_to_actor(w): return w.get_location().distance(ev_location)
 
@@ -251,7 +251,7 @@ class ObsManagerPedestrian(ObsManagerBase):
             lane_id.append(0)
 
         obs_dict = {
-            'frame': self._world.get_snapshot().frame,
+            # 'frame': self._world.get_snapshot().frame,
             'binary_mask': np.array(binary_mask, dtype=np.int8),
             'location': np.array(location, dtype=np.float32),
             'rotation': np.array(rotation, dtype=np.float32),
@@ -265,7 +265,7 @@ class ObsManagerPedestrian(ObsManagerBase):
         return obs_dict
 
     def clean(self):
-        self._parent_actor = None
+        self.vehicle = None
         self._world = None
         self._map = None
 

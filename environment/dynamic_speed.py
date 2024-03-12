@@ -10,13 +10,13 @@ from .hazard_actor import lbc_hazard_vehicle, lbc_hazard_walker
 from .traffic_light import TrafficLightHandler
 
 class DynamicSpeed():
-    def __init__(self, ego_vehicle, maximum_speed=6.):
+    def __init__(self, ego_vehicle, world, map, maximum_speed=6.):
         self._ego_vehicle = ego_vehicle
 
         self.om_vehicle = OmVehicle({'max_detection_number': 10, 'distance_threshold': 15})
         self.om_pedestrian = OmPedestrian({'max_detection_number': 10, 'distance_threshold': 15})
-        self.om_vehicle.attach_ego_vehicle(self._ego_vehicle)
-        self.om_pedestrian.attach_ego_vehicle(self._ego_vehicle)
+        self.om_vehicle.attach_ego_vehicle(self._ego_vehicle, world, map)
+        self.om_pedestrian.attach_ego_vehicle(self._ego_vehicle, world, map)
 
         self.maximum_speed = maximum_speed
         self._tl_offset = -0.8 * self._ego_vehicle.vehicle.bounding_box.extent.x

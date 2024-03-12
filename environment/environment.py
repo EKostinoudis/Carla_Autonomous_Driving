@@ -160,7 +160,12 @@ class Environment(gym.Env):
         self.init_tests()
 
         if self.reward_dynamic_max_speed:
-            self.dynamic_speed = DynamicSpeed(self.vehicle, self.reward_max_speed)
+            self.dynamic_speed = DynamicSpeed(
+                self.vehicle,
+                CarlaDataProvider.get_world(),
+                self.map,
+                self.reward_max_speed,
+            )
 
         # reset controls
         self.vehicle_control.throttle = 0.
