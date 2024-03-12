@@ -8,6 +8,7 @@ from .object_finder import ObsManagerVehicle as OmVehicle
 from .object_finder import ObsManagerPedestrian as OmPedestrian
 from .hazard_actor import lbc_hazard_vehicle, lbc_hazard_walker
 from .traffic_light import TrafficLightHandler
+from .run_stop_sign import RunStopSign
 
 class DynamicSpeed():
     def __init__(self, ego_vehicle, world, map, maximum_speed=6.):
@@ -19,10 +20,12 @@ class DynamicSpeed():
         self.om_pedestrian.attach_ego_vehicle(self._ego_vehicle, world, map)
 
         self.maximum_speed = maximum_speed
-        self._tl_offset = -0.8 * self._ego_vehicle.vehicle.bounding_box.extent.x
+        self._tl_offset = -0.8 * self._ego_vehicle.bounding_box.extent.x
+        self.run_stop_sign = RunStopSign(world)
 
     def get(self):
-        ev_transform = self._ego_vehicle.vehicle.get_transform()
+        self.run_stop_sign.tick(self._ego_vehicle)
+        ev_transform = self._ego_vehicle.get_transform()
 
         # desired_speed
         obs_vehicle = self.om_vehicle.get_observation()
@@ -31,7 +34,7 @@ class DynamicSpeed():
         # all locations in ego_vehicle coordinate
         hazard_vehicle_loc = lbc_hazard_vehicle(obs_vehicle, proximity_threshold=9.5)
         hazard_ped_loc = lbc_hazard_walker(obs_pedestrian, proximity_threshold=9.5)
-        light_state, light_loc, _ = TrafficLightHandler.get_light_state(self._ego_vehicle.vehicle,
+        light_state, light_loc, _ = TrafficLightHandler.get_light_state(self._ego_vehicle,
                                                                         offset=self._tl_offset, dist_threshold=18.0)
 
         desired_spd_veh = desired_spd_ped = desired_spd_rl = desired_spd_stop = self.maximum_speed
@@ -49,9 +52,9 @@ class DynamicSpeed():
             desired_spd_rl = self.maximum_speed * np.clip(dist_rl, 0.0, 5.0)/5.0
 
         # stop sign
-        stop_sign = self._ego_vehicle.criteria_stop._target_stop_sign
+        stop_sign = self.run_stop_sign._target_stop_sign
         stop_loc = None
-        if (stop_sign is not None) and (not self._ego_vehicle.criteria_stop._stop_completed):
+        if (stop_sign is not None) and (not self.run_stop_sign._stop_completed):
             trans = stop_sign.get_transform()
             tv_loc = stop_sign.trigger_volume.location
             loc_in_world = trans.transform(tv_loc)
