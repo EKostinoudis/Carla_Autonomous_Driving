@@ -124,7 +124,6 @@ class ObsManagerVehicle(ObsManagerBase):
         self._parent_actor = None
         self._world = None
         self._map = None
-        super(ObsManagerVehicle, self).__init__()
 
     def attach_ego_vehicle(self, parent_actor):
         self._parent_actor = parent_actor
@@ -202,8 +201,6 @@ class ObsManagerPedestrian(ObsManagerBase):
         self._distance_threshold = obs_configs['distance_threshold']
         self._parent_actor = None
         self._world = None
-
-        super(ObsManager, self).__init__()
 
     def attach_ego_vehicle(self, parent_actor):
         self._parent_actor = parent_actor
