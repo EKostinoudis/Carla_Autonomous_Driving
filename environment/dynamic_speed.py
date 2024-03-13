@@ -22,6 +22,7 @@ class DynamicSpeed():
         self.maximum_speed = maximum_speed
         self._tl_offset = -0.8 * self._ego_vehicle.bounding_box.extent.x
         self.run_stop_sign = RunStopSign(world)
+        TrafficLightHandler.reset(world)
 
     def get(self):
         self.run_stop_sign.tick(self._ego_vehicle)
@@ -34,9 +35,11 @@ class DynamicSpeed():
         # all locations in ego_vehicle coordinate
         hazard_vehicle_loc = lbc_hazard_vehicle(obs_vehicle, proximity_threshold=9.5)
         hazard_ped_loc = lbc_hazard_walker(obs_pedestrian, proximity_threshold=9.5)
-        light_state, light_loc, _ = TrafficLightHandler.get_light_state(self._ego_vehicle,
-                                                                        offset=self._tl_offset, dist_threshold=18.0)
-
+        light_state, light_loc, _ = TrafficLightHandler.get_light_state(
+            self._ego_vehicle,
+            offset=self._tl_offset,
+            dist_threshold=18.0,
+        )
         desired_spd_veh = desired_spd_ped = desired_spd_rl = desired_spd_stop = self.maximum_speed
 
         if hazard_vehicle_loc is not None:

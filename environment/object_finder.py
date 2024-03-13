@@ -220,7 +220,7 @@ class ObsManagerPedestrian(ObsManagerBase):
 
         sorted_surrounding_pedestrians = sorted(surrounding_pedestrians, key=dist_to_actor)
 
-        location, rotation, absolute_velocity = trans_utils.get_loc_rot_vel_in_ev(
+        location, rotation, absolute_velocity = get_loc_rot_vel_in_ev(
             sorted_surrounding_pedestrians, ev_transform)
 
         binary_mask, extent, on_sidewalk, road_id, lane_id = [], [], [], [], []
