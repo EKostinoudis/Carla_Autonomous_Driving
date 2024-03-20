@@ -86,6 +86,7 @@ class Environment(gym.Env):
         self.reward_steer = config.get('reward_steer', -0.1)
         self.reward_speed = config.get('reward_speed', 0.1)
         self.reward_max_speed = config.get('reward_max_speed', 30.)
+        self.reward_speed_slope = config.get('reward_speed_slope', 1.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
         self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
@@ -349,7 +350,7 @@ class Environment(gym.Env):
                 self.speeding_reward = -self.reward_speed
         else:
             self.speeding_reward = self.reward_speed * \
-                (1 - abs(speed - desired_speed) / self.reward_max_speed)
+                (1 - self.reward_speed_slope * abs(speed - desired_speed) / self.reward_max_speed)
 
         return self.not_moving_reward + \
                self.out_of_road_reward + \

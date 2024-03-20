@@ -30,6 +30,7 @@ reward_wrong_lane: -0.1
 reward_steer: -0.01
 reward_speed: 0.02
 reward_max_speed: 30.0
+reward_speed_slope: 1.0
 reward_waypoint: 0.5
 
 #
