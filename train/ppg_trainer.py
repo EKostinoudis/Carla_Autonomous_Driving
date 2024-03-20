@@ -209,12 +209,14 @@ class PPGTorchLearner(PPOTorchLearner):
                 + vf_policy_loss
             )
 
-            if hps.use_pt_kl_loss and self.train_iter < hps.train_only_vf_iters:
+            if hps.use_pt_kl_loss:
                 pt_action_dist = action_dist_class_exploration.from_logits(
                     fwd_out['pretrained_action_dist'],
                 )
                 pt_kl = torch.mean(pt_action_dist.kl(curr_action_dist))
                 pt_kl_loss = self.curr_pt_kl_coeffs_per_module[module_id] * pt_kl
+                if self.train_iter < hps.train_only_vf_iters:
+                    pt_kl_loss = pt_kl_loss * 0.
                 self.register_metrics(
                     module_id,
                     {

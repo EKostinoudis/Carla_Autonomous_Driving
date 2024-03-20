@@ -258,6 +258,9 @@ class Environment(gym.Env):
             # if the episode terminated or truncated do not perform more steps
             if terminated or truncated: break
 
+        # hold the previous steer value here, cause we only use it here
+        self.prev_steer = self.vehicle_control.steer
+
         # returns (next state, reward, terminated, truncated, info)
         return new_state, reward, terminated, truncated, info
 
@@ -300,9 +303,9 @@ class Environment(gym.Env):
 
         if len(self.collision_detector.data) > 0:
             if self.reward_speed_penalty:
-                self.collision_reward = self.episode_end_fail_reward - self.get_velocity()
+                self.collision_reward = self.reward_failure * (1 + self.get_velocity())
             else:
-                self.collision_reward = self.episode_end_fail_reward
+                self.collision_reward = self.reward_failure
             return self.collision_reward
 
         # stop and red light tests
@@ -311,7 +314,7 @@ class Environment(gym.Env):
             if test.test_status == 'FAILURE':
                 test.test_status = 'RESET'
                 if self.reward_speed_penalty:
-                    self.sign_run_reward = self.reward_failure - self.get_velocity()
+                    self.sign_run_reward = self.reward_failure * (1 + self.get_velocity())
                 else:
                     self.sign_run_reward = self.reward_failure
                 return self.sign_run_reward
@@ -332,8 +335,6 @@ class Environment(gym.Env):
 
         # steering reward (based on steer diff)
         self.steering_reward = self.reward_steer * abs(self.prev_steer - self.vehicle_control.steer)
-        # hold the previous steer value here, cause we only use it here
-        self.prev_steer = self.vehicle_control.steer
 
         # if the vehicle has speed lower than the given max, scale linearly the reward
         # else (above the speed limit), give penalty
@@ -393,8 +394,6 @@ class Environment(gym.Env):
             for test in self.tests[:2]:
                 if test.test_status == 'FAILURE':
                     return (True, False)
-
-        # TODO: check for max steps and maybe more???
 
         return (False, False)
 
