@@ -93,6 +93,7 @@ def DataloaderBatchIteratorFactory(pin_memory=True, shuffle=True, num_workers=2,
 class PPGTorchLearner(PPOTorchLearner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.train_iter = 0
 
     def build(self) -> None:
         super().build()
@@ -193,6 +194,11 @@ class PPGTorchLearner(PPOTorchLearner):
             # we must use all the layers in the loss, else we get an error
             vf_policy_loss = fwd_out['vf_policy'] * 0.
 
+            # if we train only the vf, set the loss of the policy to 0
+            if self.train_iter < hps.train_only_vf_iters:
+                surrogate_loss = surrogate_loss * 0.
+                curr_entropy = curr_entropy * 0.
+
             total_loss = possibly_masked_mean(
                 - surrogate_loss
                 + hps.vf_loss_coeff * vf_loss_clipped
@@ -203,7 +209,7 @@ class PPGTorchLearner(PPOTorchLearner):
                 + vf_policy_loss
             )
 
-            if hps.use_pt_kl_loss:
+            if hps.use_pt_kl_loss and self.train_iter < hps.train_only_vf_iters:
                 pt_action_dist = action_dist_class_exploration.from_logits(
                     fwd_out['pretrained_action_dist'],
                 )
@@ -267,6 +273,8 @@ class PPGTorchLearner(PPOTorchLearner):
             elif sampled_kl < 0.5 * self.hps.kl_target:
                 curr_var.data *= 0.5
             results.update({LEARNER_RESULTS_CURR_KL_COEFF_KEY: curr_var.item()})
+
+        self.train_iter += 1
 
         # clear gpu memory cache
         gc.collect()

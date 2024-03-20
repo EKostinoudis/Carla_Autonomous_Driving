@@ -59,6 +59,9 @@ extra_params:
   # number of iters before running an auxiliary phase 
   normal_phase_iters: 4
 
+  # number of iterations to train only the value function (0 or negative will not train it
+  train_only_vf_iters: 0
+
   # use advantage normalization
   advantage_norm: true
 

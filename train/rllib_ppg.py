@@ -59,6 +59,7 @@ class PPGLearnerHyperparameters(PPOLearnerHyperparameters):
     use_dataloader: bool = None
     dataloader_pin_memory: bool = None
     dataloader_num_workers: int = None
+    train_only_vf_iters: int = None
 
 class PPGConfig(PPOConfig):
     def __init__(self, algo_class=None):
@@ -77,6 +78,7 @@ class PPGConfig(PPOConfig):
         self.use_dataloader = False
         self.dataloader_pin_memory = False
         self.dataloader_num_workers = 2
+        self.train_only_vf_iters = -1
 
     def get_learner_hyperparameters(self) -> PPGLearnerHyperparameters:
         base_hps = super().get_learner_hyperparameters()
@@ -90,6 +92,7 @@ class PPGConfig(PPOConfig):
             use_dataloader=self.use_dataloader,
             dataloader_pin_memory=self.dataloader_pin_memory,
             dataloader_num_workers=self.dataloader_num_workers,
+            train_only_vf_iters=self.train_only_vf_iters,
             **dataclasses.asdict(base_hps),
         )
 
