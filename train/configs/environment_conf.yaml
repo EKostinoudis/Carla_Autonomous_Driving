@@ -20,6 +20,10 @@ seed: 0
 # how many times to repeat the given action a step of the env
 repeat_action: 0
 
+# use latera distance for the reward and out of road-lane calculation
+use_lateral_dist: true
+terminal_lateral_dist: 2.5 # if lateral dist bigger, terminate the episode
+
 # reward constants
 reward_negative_speed_overshoot: true
 reward_dynamic_max_speed: false
@@ -32,6 +36,7 @@ reward_speed: 0.02
 reward_max_speed: 30.0
 reward_speed_slope: 1.0
 reward_waypoint: 0.5
+reward_lateral_dist: 0.5
 
 #
 # for the carla server

@@ -15,6 +15,7 @@ from .sensor_interface import SensorInterface
 from .route_planner import RoutePlanner
 from .carla_launcher import CarlaLauncher
 from .dynamic_speed import DynamicSpeed
+from .lateral_distance_handler import LateralDistanceHandler
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_criteria import (
@@ -79,6 +80,10 @@ class Environment(gym.Env):
         # don't count because itsn't posible
         self.out_of_lane_termination_seconds = config.get('out_of_lane_termination_seconds', 5)
 
+        # use latera distance for the reward and out of road-lane calculation
+        self.use_lateral_dist = config.get('use_lateral_dist', False)
+        self.terminal_lateral_dist = config.get('terminal_lateral_dist', 2.5)
+
         # get the reward constants-multipliers
         self.reward_failure = config.get('reward_failure', -10.)
         self.reward_success = config.get('reward_success', 10.)
@@ -88,6 +93,7 @@ class Environment(gym.Env):
         self.reward_max_speed = config.get('reward_max_speed', 30.)
         self.reward_speed_slope = config.get('reward_speed_slope', 1.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
+        self.reward_lateral_dist = config.get('reward_lateral_dist', 0.5)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
         self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
         self.reward_negative_speed_overshoot = config.get('reward_negative_speed_overshoot', True)
@@ -143,6 +149,9 @@ class Environment(gym.Env):
             self.world_handler.gps_route,
             self.world_handler.vehicle_route,
         )
+
+        # for the calculation of lateral distance
+        self.ld_handler = LateralDistanceHandler(self.world_handler.vehicle_route)
 
         # set the new map
         self.map = CarlaDataProvider.get_map()
@@ -210,23 +219,27 @@ class Environment(gym.Env):
 
             if self.render_rgb_camera_flag: self.render_rgb_camera()
 
+
             # update the state of the tests
             for test in self.tests: _ = test.update()
 
-            # check if the vehicle is out of road or lane
-            self.in_junction = False
-            self.out_of_road = self.check_out_of_road()
-            self.out_of_lane = self.check_out_of_lane()
-            if not self.in_junction:
-                self.in_junction_count = 0
-                if self.out_of_road or self.out_of_lane:
-                    self.out_of_lane_count += 1
-                else:
-                    self.out_of_lane_count = 0
+            if self.use_lateral_dist:
+                self.lateral_dist = self.ld_handler.update(self.vehicle.get_location())
             else:
-                if self.out_of_road or self.out_of_lane:
-                    self.out_of_lane_count += 1
-                self.in_junction_count += 1
+                # check if the vehicle is out of road or lane
+                self.in_junction = False
+                self.out_of_road = self.check_out_of_road()
+                self.out_of_lane = self.check_out_of_lane()
+                if not self.in_junction:
+                    self.in_junction_count = 0
+                    if self.out_of_road or self.out_of_lane:
+                        self.out_of_lane_count += 1
+                    else:
+                        self.out_of_lane_count = 0
+                else:
+                    if self.out_of_road or self.out_of_lane:
+                        self.out_of_lane_count += 1
+                    self.in_junction_count += 1
 
             # update the stopped counter
             if self.get_velocity() < 0.5:
@@ -238,8 +251,9 @@ class Environment(gym.Env):
                 if not self.episode_alive:
                     logger.debug(f'End episode. Task failed: {self.task_failed}')
                 logger.debug(f'collision_detector: {self.collision_detector.data}')
-                logger.debug(f'Out of road: {self.out_of_road}')
-                logger.debug(f'Out of lane: {self.out_of_lane}')
+                if not self.use_lateral_dist:
+                    logger.debug(f'Out of road: {self.out_of_road}')
+                    logger.debug(f'Out of lane: {self.out_of_lane}')
                 logger.debug(f'stopped count: {self.stopped_count}')
                 logger.debug(f'Velocity: {self.get_velocity():6.02f} '
                              f'Speed limit: {self.vehicle.get_speed_limit():6.02f}')
@@ -290,6 +304,7 @@ class Environment(gym.Env):
         self.steering_reward = 0.
         self.speeding_reward = 0.
         self.collision_reward = 0.
+        self.lateral_dist_reward = 0.
         self.reached_wp_reward = self.reached_wp * self.reward_waypoint
 
         # end of scenario reward
@@ -324,14 +339,20 @@ class Environment(gym.Env):
             self.not_moving_reward = self.reward_failure
             return self.not_moving_reward
 
-        # vehicle too long out of lane
-        if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
-            self.out_of_road_reward = self.reward_wrong_lane
-            return self.reward_wrong_lane
+        if self.use_lateral_dist:
+            if self.lateral_dist > self.terminal_lateral_dist:
+                return self.episode_end_fail_reward
+            else:
+                self.lateral_dist_reward = self.reward_lateral_dist * self.lateral_dist
+        else:
+            # vehicle too long out of lane
+            if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
+                self.out_of_road_reward = self.reward_wrong_lane
+                return self.reward_wrong_lane
 
-        # out of road or lane
-        if self.out_of_road or self.out_of_lane:
-            self.out_of_road_reward = self.reward_wrong_lane
+            # out of road or lane
+            if self.out_of_road or self.out_of_lane:
+                self.out_of_road_reward = self.reward_wrong_lane
 
         # steering reward (based on steer diff)
         self.steering_reward = self.reward_steer * abs(self.prev_steer - self.vehicle_control.steer)
@@ -357,7 +378,8 @@ class Environment(gym.Env):
                self.out_of_road_reward + \
                self.steering_reward + \
                self.speeding_reward + \
-               self.reached_wp_reward
+               self.reached_wp_reward + \
+               self.lateral_dist_reward
 
     def create_info_for_logging(self):
         return {
@@ -369,6 +391,7 @@ class Environment(gym.Env):
             'steering_reward': self.steering_reward,
             'speeding_reward': self.speeding_reward,
             'collision_reward': self.collision_reward,
+            'lateral_dist_reward': self.lateral_dist_reward,
             'reached_wp_reward': self.reached_wp_reward,
             'speed': self.get_velocity(),
             'throttle': self.vehicle_control.throttle,
@@ -386,8 +409,12 @@ class Environment(gym.Env):
         '''
         if self.stopped_count * self.fixed_delta_seconds > self.stopped_termination_seconds:
             return (True, False)
-        if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
-            return (True, False)
+        if self.use_lateral_dist:
+            if self.lateral_dist > self.terminal_lateral_dist:
+                return (True, False)
+        else:
+            if self.out_of_lane_count * self.fixed_delta_seconds > self.out_of_lane_termination_seconds:
+                return (True, False)
         if not self.episode_alive: return (True, False)
         if len(self.collision_detector.data) > 0: return (True, False)
         if self.termination_on_run:
