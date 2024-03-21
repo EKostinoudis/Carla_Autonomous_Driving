@@ -397,6 +397,7 @@ class Environment(gym.Env):
             'throttle': self.vehicle_control.throttle,
             'brake': self.vehicle_control.brake,
             'steer': self.vehicle_control.steer,
+            'lateral_dist': self.lateral_dist,
         }
 
     def get_state(self):
