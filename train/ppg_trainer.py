@@ -147,7 +147,7 @@ class PPGTorchLearner(PPOTorchLearner):
             vf_loss_p = possibly_masked_mean(torch.pow(value_policy_out - batch[Postprocessing.VALUE_TARGETS], 2.0))
 
             if self.train_iter < hps.train_only_vf_iters:
-                value_policy_out = value_policy_out * 0.
+                vf_loss_p = vf_loss_p * 0.
                 kl_loss_scaled = kl_loss_scaled * 0.
 
             self.register_metrics(
