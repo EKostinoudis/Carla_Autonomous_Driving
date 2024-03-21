@@ -19,7 +19,6 @@ class LateralDistanceHandler:
 
             dist = wp_loc.distance(location)
             next_dist = wp_loc_next.distance(location)
-            print('DIST:', dist, next_dist)
             if next_dist < dist:
                 self.waypoints.popleft()
             else:
