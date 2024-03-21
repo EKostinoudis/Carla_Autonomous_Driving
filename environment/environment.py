@@ -93,7 +93,7 @@ class Environment(gym.Env):
         self.reward_max_speed = config.get('reward_max_speed', 30.)
         self.reward_speed_slope = config.get('reward_speed_slope', 1.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
-        self.reward_lateral_dist = config.get('reward_lateral_dist', 0.5)
+        self.reward_lateral_dist = config.get('reward_lateral_dist', -0.02)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
         self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
         self.reward_negative_speed_overshoot = config.get('reward_negative_speed_overshoot', True)
