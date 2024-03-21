@@ -20,7 +20,7 @@ seed: 0
 # how many times to repeat the given action a step of the env
 repeat_action: 0
 
-# use latera distance for the reward and out of road-lane calculation
+# use lateral distance for the reward and out of road-lane calculation
 use_lateral_dist: true
 terminal_lateral_dist: 2.5 # if lateral dist bigger, terminate the episode
 
