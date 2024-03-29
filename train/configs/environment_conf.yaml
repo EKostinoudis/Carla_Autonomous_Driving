@@ -37,6 +37,7 @@ reward_max_speed: 30.0
 reward_speed_slope: 1.0
 reward_waypoint: 0.5
 reward_lateral_dist: -0.02
+reward_lateral_angle: 0.0
 
 #
 # for the carla server

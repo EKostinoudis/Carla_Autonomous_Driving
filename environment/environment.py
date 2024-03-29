@@ -94,6 +94,7 @@ class Environment(gym.Env):
         self.reward_speed_slope = config.get('reward_speed_slope', 1.)
         self.reward_waypoint = config.get('reward_waypoint', 30.)
         self.reward_lateral_dist = config.get('reward_lateral_dist', -0.02)
+        self.reward_lateral_angle = config.get('reward_lateral_angle', 0.)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
         self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
         self.reward_negative_speed_overshoot = config.get('reward_negative_speed_overshoot', True)
@@ -224,7 +225,8 @@ class Environment(gym.Env):
             for test in self.tests: _ = test.update()
 
             if self.use_lateral_dist:
-                self.lateral_dist = self.ld_handler.update(self.vehicle.get_location())
+                self.lateral_dist, self.lateral_angle = \
+                    self.ld_handler.update(self.vehicle.get_transform())
             else:
                 # check if the vehicle is out of road or lane
                 self.in_junction = False
@@ -305,6 +307,7 @@ class Environment(gym.Env):
         self.speeding_reward = 0.
         self.collision_reward = 0.
         self.lateral_dist_reward = 0.
+        self.lateral_angle_reward = 0.
         self.reached_wp_reward = self.reached_wp * self.reward_waypoint
 
         # end of scenario reward
@@ -374,12 +377,15 @@ class Environment(gym.Env):
             self.speeding_reward = self.reward_speed * \
                 (1 - self.reward_speed_slope * abs(speed - desired_speed) / self.reward_max_speed)
 
+        self.lateral_angle_reward = self.lateral_angle * self.reward_lateral_angle 
+
         return self.not_moving_reward + \
                self.out_of_road_reward + \
                self.steering_reward + \
                self.speeding_reward + \
                self.reached_wp_reward + \
-               self.lateral_dist_reward
+               self.lateral_dist_reward + \
+               self.lateral_angle_reward
 
     def create_info_for_logging(self):
         return {
@@ -392,12 +398,14 @@ class Environment(gym.Env):
             'speeding_reward': self.speeding_reward,
             'collision_reward': self.collision_reward,
             'lateral_dist_reward': self.lateral_dist_reward,
+            'lateral_angle_reward': self.lateral_angle_reward,
             'reached_wp_reward': self.reached_wp_reward,
             'speed': self.get_velocity(),
             'throttle': self.vehicle_control.throttle,
             'brake': self.vehicle_control.brake,
             'steer': self.vehicle_control.steer,
             'lateral_dist': self.lateral_dist,
+            'lateral_angle': self.lateral_angle,
         }
 
     def get_state(self):

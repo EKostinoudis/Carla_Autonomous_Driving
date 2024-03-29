@@ -3,12 +3,14 @@
 from collections import deque
 import carla
 import numpy as np
+from .object_finder import cast_angle
 
 class LateralDistanceHandler:
     def __init__(self, waypoints):
         self.waypoints = deque(waypoints)
 
-    def update(self, location):
+    def update(self, transform):
+        location = transform.location
         location.z = 0
 
         while len(self.waypoints) >= 2:
@@ -35,5 +37,9 @@ class LateralDistanceHandler:
         wp_unit_forward = carla.Rotation(yaw=yaw).get_forward_vector()
         np_wp_unit_right = np.array([-wp_unit_forward.y, wp_unit_forward.x], dtype=np.float32)
 
-        return np.abs(np.dot(np_wp_unit_right, np_d_vec))
+        angle_diff = np.deg2rad(np.abs(cast_angle(
+            transform.rotation.yaw - self.waypoints[0][0].rotation.yaw
+        )))
+
+        return np.abs(np.dot(np_wp_unit_right, np_d_vec)), angle_diff
 
