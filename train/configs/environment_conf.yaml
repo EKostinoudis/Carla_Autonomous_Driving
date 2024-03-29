@@ -68,6 +68,7 @@ route: srunner/data/routes_training.xml
 scenario_file: srunner/data/all_towns_traffic_scenarios.json
 single_route: null
 criteria_enable: true
+pick_random_train_weather: true
 
 # scenario
 # run_type: scenario

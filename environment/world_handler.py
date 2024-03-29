@@ -10,7 +10,7 @@ from environment.traffic_calculator import get_traffic
 
 from .scenarios import ScenarioRunner
 from .traffic_generator import TrafficGenerator
-from .weather_handler import WeatherHandler
+from .weather_handler import WeatherHandler, TRAIN_WEATHER_PRESETS
 from .traffic_calculator import get_traffic, TrafficState, to_traffic_state
 
 from srunner.scenariomanager.timer import GameTime
@@ -30,6 +30,7 @@ class WorldHandler():
         self.timeout = config.get('timeout', 30.)
         self.fixed_delta_seconds = config.get('fixed_delta_seconds', 0.1)
         self.max_substeps = config.get('max_substeps', 15) # default value is 10
+        self.pick_random_train_weather = config.get('pick_random_train_weather', False)
 
         self.vehicle = None
         self.scenario_runner = None
@@ -191,6 +192,8 @@ class WorldHandler():
         if self.scenario_runner is not None:
             # pick next config
             config = next(self.configs_iter)
+            if self.pick_random_train_weather:
+                config.weather = random.choice(TRAIN_WEATHER_PRESETS)
             logger.info(f'Scenario name: {config.name}')
 
             # load next scenario
