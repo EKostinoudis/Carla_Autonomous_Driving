@@ -38,7 +38,7 @@ def main(args):
     env_conf = OmegaConf.load(env_conf_file)
 
     # update to absolute paths
-    conf_path_fields = ['path_to_conf', 'checkpoint_file']
+    conf_path_fields = ['path_to_conf', 'checkpoint_file', 'restore_checkpoint']
     env_conf_path_fields = ['route', 'scenario_file']
     update_to_abspath(conf, conf_path_fields)
     update_to_abspath(env_conf, env_conf_path_fields)
@@ -198,6 +198,7 @@ def main(args):
         local_dir=os.path.abspath("ray_results"),
         checkpoint_freq=checkpoint_freq,
         checkpoint_at_end=True,
+        restore=conf.get('restore_checkpoint', None),
     )
 
 if __name__ == '__main__':

@@ -18,6 +18,9 @@ no_rollout_workers: true # if use_vec_env is true, set num_rollout_workers=0
 # file to a checkpoint from which we start the training
 checkpoint_file: models/CILv2_multiview/_results/checkpoints/CIL_multiview_actor_critic/CIL_multiview_actor_critic_final.pth
 
+# checkpoint to resume the training from (restore argument in tune.run)
+restore_checkpoint: null
+
 # path the the models config file
 path_to_conf: ./models/CILv2_multiview/_results/Ours/Town12346_5/config40.json
 
