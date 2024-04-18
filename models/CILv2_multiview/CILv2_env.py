@@ -28,6 +28,25 @@ def checkpoint_parse_configuration_file(filename):
     return configuration_dict['yaml'], configuration_dict['checkpoint'], \
            configuration_dict['agent_name']
 
+CILv2_observation_space = gym.spaces.Tuple((
+    gym.spaces.Box(
+        low=float('-inf'),
+        high=float('inf'),
+        # shape=(1, 3, 1, 3, 300, 300),
+        shape=(1, 3, 3, 300, 300),
+        dtype=np.float32,),
+    gym.spaces.Box(
+        low=float('-inf'),
+        high=float('inf'),
+        shape=(1, 6),
+        dtype=np.float32,),
+    gym.spaces.Box(
+        low=float('-inf'),
+        high=float('inf'),
+        shape=(1, 1),
+        dtype=np.float32,),
+))
+
 class CILv2_env(gym.Env):
     def __init__(self,
                  env_config: DictConfig | dict,
@@ -57,24 +76,7 @@ class CILv2_env(gym.Env):
             dtype=np.float32,
         )
 
-        self.observation_space = gym.spaces.Tuple((
-            gym.spaces.Box(
-                low=float('-inf'),
-                high=float('inf'),
-                # shape=(1, 3, 1, 3, 300, 300),
-                shape=(1, 3, 3, 300, 300),
-                dtype=np.float32,),
-            gym.spaces.Box(
-                low=float('-inf'),
-                high=float('inf'),
-                shape=(1, 6),
-                dtype=np.float32,),
-            gym.spaces.Box(
-                low=float('-inf'),
-                high=float('inf'),
-                shape=(1, 1),
-                dtype=np.float32,),
-        ))
+        self.observation_space = CILv2_observation_space
 
         # just to init the config
         self.setup_model(path_to_conf_file)

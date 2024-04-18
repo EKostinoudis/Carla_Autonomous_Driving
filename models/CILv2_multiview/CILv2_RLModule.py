@@ -1,6 +1,7 @@
 from typing import Mapping, Any
 import torch
 from copy import deepcopy
+import logging
 
 from ray.rllib.algorithms.ppo.ppo_rl_module import PPORLModule
 
@@ -17,6 +18,8 @@ from .network.models.architectures.CIL_multiview.CIL_multiview_rllib import (
     CIL_multiview_actor_critic_stack_RLModule,
     CIL_multiview_actor_critic_ppg_RLModule,
 )
+
+logger = logging.getLogger(__name__)
 
 def get_model(model_config):
     if model_config.get('use_separate_vf', False):
@@ -180,6 +183,15 @@ class CILv2_RLModule_PPG(TorchRLModule, PPORLModule):
             raise ValueError(
                 f'{dist} distribution not supported. Use "beta" or "gaussian"'
             )
+
+        # NOTE: this is needed in order to restore training from a checkpoint
+        if not hasattr(self.config.observation_space, 'original_space'):
+            logger.warn(
+                'config.observation_space has no attribute original_space. '
+                'Setting the config.observation_space.original_space to CILv2_observation_space'
+            )
+            from models.CILv2_multiview.CILv2_env import CILv2_observation_space
+            self.config.observation_space.original_space = CILv2_observation_space
 
     def get_initial_state(self) -> dict:
         return {}

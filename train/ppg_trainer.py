@@ -376,7 +376,7 @@ class PPGTorchLearner(PPOTorchLearner):
             batch = self._convert_batch_type(batch)
             batch = self._set_slicing_by_batch_id(batch, value=True)
 
-        # if we are in the speel mode (no actions in the batch), populate the
+        # if we are in the sleep mode (no actions in the batch), populate the
         # action dist field of the batch
         key = list(batch.policy_batches.keys())[0]
         if not SampleBatch.ACTIONS in batch[key]:
