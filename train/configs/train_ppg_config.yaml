@@ -81,6 +81,12 @@ extra_params:
   normalize_actions: false
   clip_actions: false
 
+  # use exponential moving average for the calculation of the mean and std,
+  # ineasted of running mean and std
+  value_tartget_norm_use_ema: false
+  # ema smoothing factor
+  value_tartget_norm_ema_gamma: 0.9
+
   lr: 5.0e-06
   train_batch_size: 2000
   sgd_minibatch_size: 12

@@ -43,6 +43,14 @@ def update_stats(existing_mean, existing_var, existing_count, new_mean, new_var,
 
     return combined_mean, combined_variance, combined_count
 
+
+def ema_update_stats(existing_mean, existing_std, new_mean, new_std, gamma):
+    ''' Update stats with exponential moving average '''
+    new_mean = gamma * existing_mean + (1 - gamma) * new_mean
+    new_std = gamma * existing_std + (1 - gamma) * new_std
+    return new_mean, new_std
+
+
 def remove_keys(batch: MultiAgentBatch, key_list: List[str]):
     for policy_id in batch.policy_batches:
         for key in key_list:
@@ -68,6 +76,8 @@ class PPGConfig(PPOConfig):
         self.pt_kl_coeff = 0.1
         self.pt_kl_coeff_decay = 0.999
         self.value_tartget_norm = True
+        self.value_tartget_norm_use_ema = False
+        self.value_tartget_norm_ema_gamma = 0.9
         self.auxiliary_epochs = 5
         self.normal_phase_iters = 2
         self.aux_kl_coef = 1.
@@ -139,18 +149,28 @@ class PPG(PPO):
         # Standardize value_targets
         if self.config.value_tartget_norm:
             for key in train_batch.policy_batches:
-                self.mean_vf_target[key], self.var_vf_target[key], self.num_values_vf_target[key] = update_stats(
-                    self.mean_vf_target[key],
-                    self.var_vf_target[key],
-                    self.num_values_vf_target[key],
-                    np.mean(train_batch[key][Postprocessing.VALUE_TARGETS]),
-                    np.var(train_batch[key][Postprocessing.VALUE_TARGETS]),
-                    train_batch[key][Postprocessing.VALUE_TARGETS].shape[0],
-                )
-                self.std_vf_target[key] = self.var_vf_target[key]**0.5
-                train_batch[key][Postprocessing.VALUE_TARGETS] = \
-                    (train_batch[key][Postprocessing.VALUE_TARGETS] - self.mean_vf_target[key]) / \
-                    (self.std_vf_target[key])
+                if not self.config.value_tartget_norm_use_ema:
+                    self.mean_vf_target[key], self.var_vf_target[key], self.num_values_vf_target[key] = update_stats(
+                        self.mean_vf_target[key],
+                        self.var_vf_target[key],
+                        self.num_values_vf_target[key],
+                        np.mean(train_batch[key][Postprocessing.VALUE_TARGETS]),
+                        np.var(train_batch[key][Postprocessing.VALUE_TARGETS]),
+                        train_batch[key][Postprocessing.VALUE_TARGETS].shape[0],
+                    )
+                    self.std_vf_target[key] = self.var_vf_target[key]**0.5
+                    train_batch[key][Postprocessing.VALUE_TARGETS] = \
+                        (train_batch[key][Postprocessing.VALUE_TARGETS] - self.mean_vf_target[key]) / \
+                        (self.std_vf_target[key])
+                else:
+                    self.mean_vf_target[key], self.std_vf_target[key] = ema_update_stats(
+                        self.mean_vf_target[key],
+                        self.std_vf_target[key],
+                        np.mean(train_batch[key][Postprocessing.VALUE_TARGETS]),
+                        np.var(train_batch[key][Postprocessing.VALUE_TARGETS]),
+                        self.config.value_tartget_norm_ema_gamma,
+                    )
+
 
         if self.config.advantage_norm:
             # Standardize advantages
