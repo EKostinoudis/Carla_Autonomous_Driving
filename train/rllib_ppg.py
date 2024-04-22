@@ -167,7 +167,7 @@ class PPG(PPO):
                         self.mean_vf_target[key],
                         self.std_vf_target[key],
                         np.mean(train_batch[key][Postprocessing.VALUE_TARGETS]),
-                        np.var(train_batch[key][Postprocessing.VALUE_TARGETS]),
+                        np.std(train_batch[key][Postprocessing.VALUE_TARGETS]),
                         self.config.value_tartget_norm_ema_gamma,
                     )
 
