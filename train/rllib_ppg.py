@@ -159,9 +159,6 @@ class PPG(PPO):
                         train_batch[key][Postprocessing.VALUE_TARGETS].shape[0],
                     )
                     self.std_vf_target[key] = self.var_vf_target[key]**0.5
-                    train_batch[key][Postprocessing.VALUE_TARGETS] = \
-                        (train_batch[key][Postprocessing.VALUE_TARGETS] - self.mean_vf_target[key]) / \
-                        (self.std_vf_target[key])
                 else:
                     self.mean_vf_target[key], self.std_vf_target[key] = ema_update_stats(
                         self.mean_vf_target[key],
@@ -170,6 +167,9 @@ class PPG(PPO):
                         np.std(train_batch[key][Postprocessing.VALUE_TARGETS]),
                         self.config.value_tartget_norm_ema_gamma,
                     )
+                train_batch[key][Postprocessing.VALUE_TARGETS] = \
+                    (train_batch[key][Postprocessing.VALUE_TARGETS] - self.mean_vf_target[key]) / \
+                    (self.std_vf_target[key])
 
 
         if self.config.advantage_norm:
