@@ -25,9 +25,15 @@ def get_junction_dist(wp):
     '''Helper function to find the next junction wp'''
     start_wp = wp
     # if the wp starts from a juncion skip it
-    while wp.is_junction: wp = wp.next(0.5)[0]
+    while wp.is_junction:
+        wp_list = wp.next(0.5)
+        if len(wp_list) == 0: return 1000.
+        wp = wp_list[0]
     # get the next junction
-    while not wp.is_junction: wp = wp.next(0.5)[0]
+    while not wp.is_junction:
+        wp_list = wp.next(0.5)
+        if len(wp_list) == 0: return 1000.
+        wp = wp_list[0]
     return start_wp.transform.location.distance(wp.transform.location)
 
 class WorldHandler():
