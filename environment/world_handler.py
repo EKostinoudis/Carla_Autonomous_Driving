@@ -5,6 +5,7 @@ from itertools import cycle
 import carla
 from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
+import numpy as np
 
 from environment.traffic_calculator import get_traffic
 
@@ -332,7 +333,7 @@ class WorldHandler():
         # vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('model3')[0]
         vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('vehicle.lincoln.mkz_2017')[0]
         vehicle = None
-        if favor_junction_wps:
+        if self.favor_junction_wps:
             # calculate the probabilities for each spawn location
             map = CarlaDataProvider.get_map()
             spawn_wp = [map.get_waypoint(sp.location) for sp in spawn_points]
@@ -341,7 +342,7 @@ class WorldHandler():
             probs /= np.sum(probs)
 
         while vehicle is None:
-            if favor_junction_wps:
+            if self.favor_junction_wps:
                 transform = random.choices(spawn_points, weights=probs)[0]
             else:
                 transform = random.choice(spawn_points)
