@@ -91,3 +91,6 @@ pick_random_train_weather: true
 #
 # random_weather: true
 # dynamic_weather: true
+#
+# have a bigger probability for waypoints close to a junction
+# favor_junction_wps: true

@@ -20,6 +20,15 @@ from srunner.tools.route_manipulation import interpolate_trajectory
 
 logger = logging.getLogger(__name__)
 
+def get_junction_dist(wp):
+    '''Helper function to find the next junction wp'''
+    start_wp = wp
+    # if the wp starts from a juncion skip it
+    while wp.is_junction: wp = wp.next(0.5)[0]
+    # get the next junction
+    while not wp.is_junction: wp = wp.next(0.5)[0]
+    return start_wp.transform.location.distance(wp.transform.location)
+
 class WorldHandler():
     def __init__(self, config: DictConfig):
         self.ip = config.get('ip', 'localhost')
@@ -31,6 +40,7 @@ class WorldHandler():
         self.fixed_delta_seconds = config.get('fixed_delta_seconds', 0.1)
         self.max_substeps = config.get('max_substeps', 15) # default value is 10
         self.pick_random_train_weather = config.get('pick_random_train_weather', False)
+        self.favor_junction_wps = config.get('favor_junction_wps', False)
 
         self.vehicle = None
         self.scenario_runner = None
@@ -322,8 +332,19 @@ class WorldHandler():
         # vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('model3')[0]
         vehicle_blueprint = CarlaDataProvider._blueprint_library.filter('vehicle.lincoln.mkz_2017')[0]
         vehicle = None
+        if favor_junction_wps:
+            # calculate the probabilities for each spawn location
+            map = CarlaDataProvider.get_map()
+            spawn_wp = [map.get_waypoint(sp.location) for sp in spawn_points]
+            junction_dists = np.array([get_junction_dist(wp) for wp in spawn_wp])
+            probs = 1 / (junction_dists**2 + 1)
+            probs /= np.sum(probs)
+
         while vehicle is None:
-            transform = random.choice(spawn_points)
+            if favor_junction_wps:
+                transform = random.choices(spawn_points, weights=probs)[0]
+            else:
+                transform = random.choice(spawn_points)
 
             vehicle = world.try_spawn_actor(
                     vehicle_blueprint,
