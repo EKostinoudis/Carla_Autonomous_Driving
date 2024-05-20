@@ -28,6 +28,7 @@ terminal_lateral_dist: 2.5 # if lateral dist bigger, terminate the episode
 reward_negative_speed_overshoot: true
 reward_dynamic_max_speed: false
 reward_speed_penalty: false
+reward_collision_penalty_scale: 1.0
 reward_failure: -1.0
 reward_success: 1.0
 reward_wrong_lane: -0.1

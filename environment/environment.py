@@ -95,6 +95,7 @@ class Environment(gym.Env):
         self.reward_waypoint = config.get('reward_waypoint', 30.)
         self.reward_lateral_dist = config.get('reward_lateral_dist', -0.02)
         self.reward_lateral_angle = config.get('reward_lateral_angle', 0.)
+        self.reward_collision_penalty_scale = config.get('reward_collision_penalty_scale', 1.)
         self.reward_speed_penalty = config.get('reward_speed_penalty', False)
         self.reward_dynamic_max_speed = config.get('reward_dynamic_max_speed', False)
         self.reward_negative_speed_overshoot = config.get('reward_negative_speed_overshoot', True)
@@ -332,7 +333,8 @@ class Environment(gym.Env):
             if test.test_status == 'FAILURE':
                 test.test_status = 'RESET'
                 if self.reward_speed_penalty:
-                    self.sign_run_reward = self.reward_failure * (1 + self.get_velocity())
+                    self.sign_run_reward = self.reward_failure * \
+                        (1 + self.reward_collision_penalty_scale * self.get_velocity())
                 else:
                     self.sign_run_reward = self.reward_failure
                 return self.sign_run_reward
