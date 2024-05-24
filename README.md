@@ -53,8 +53,7 @@ There are two options for the IL training. These options are:
 1. [policy_head_training.py](train/policy_head_training.py) which uses the
    [DataParallel](https://pytorch.org/docs/stable/generated/torch.nn.DataParallel.html)
    to train the model.
-2.
-[policy_head_training_accelerate.py](train/policy_head_training_accelerate.py)
+2. [policy_head_training_accelerate.py](train/policy_head_training_accelerate.py)
 which uses the [Accelerate](https://huggingface.co/docs/accelerate/index)
 library to train the model. These library uses Distributed Data Parallel in the
 background. This is the recommended option!
@@ -150,12 +149,10 @@ are:
    runner](https://github.com/carla-simulator/scenario_runner) provides. These
    are predefined routes with various challenges for the agent. It can
    configured using the option `run_type: route`
-
 2. **Scenarios**: These are also provided by the [scenario
    runner](https://github.com/carla-simulator/scenario_runner). It can be used
    by the option `run_type: scenario`. We didn't used this option for training,
    but if you are interested you can use it.
-
 3. **Free ride**: In these case the agent ride in the from a random generated
    route. This can be configured with `run_type: free ride` (or any value except
    `route` and `scenario`).
