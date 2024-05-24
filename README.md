@@ -27,9 +27,9 @@ take a look at [CILv2_env](models/CILv2_multiview/CILv2_env.py) which is the
 environment for the CIL++ architecture.
 
 We recommend to use a wrapper class (like in the
-[CILv2_sub_env](models/CILv2_multiview/CILv2_sub_env.py)) to run it a separate
-process to avoid ending the training when the Carla server crashes. To do this
-just copy this file and change the environment class.
+[CILv2_sub_env](models/CILv2_multiview/CILv2_sub_env.py)) to run the environment
+in a separate process to avoid ending the training when the Carla server
+crashes. To do this just copy this file and change the environment class.
 
 # Training
 
@@ -76,16 +76,16 @@ example:
 bash train/launch_policy_head_training_accelerate.sh --clean --all-weights
 ```
 
-The data that we used in the phase are the data from the
-[CIL++](https://github.com/yixiao1/CILv2_multiview). Specicaly, we used the part
-7-14 for the training. We used to part 6 for the evaluation, but we
-recommend to use other or more data for a proper evaluation.
+The data that we used in this phase are the data provided in the
+[CIL++](https://github.com/yixiao1/CILv2_multiview) repository. Specially, we
+used the part 7-14 for the training. Also, we used to part 6 for the evaluation,
+but we recommend to use other or more data for a proper evaluation.
 
 ## Reinforcement Learning
 
-For the RL we used Carla 0.9.15. You can use the
-[GitHub releases](https://github.com/carla-simulator/carla/releases/tag/0.9.15) in order to
-download this version, or take a look at the [Carla
+For the RL we used Carla 0.9.15. You can use the [GitHub
+releases](https://github.com/carla-simulator/carla/releases/tag/0.9.15) in order
+to download this version, or take a look at the [Carla
 website](https://carla.readthedocs.io/en/latest/start_quickstart/#carla-installation)
 for installation instructions.
 
