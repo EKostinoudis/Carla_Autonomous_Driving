@@ -1,4 +1,4 @@
-# mainly used for debuging, if true opens a window and displays the camera of
+# mainly used for debugging, if true opens a window and displays the camera of
 # the vehicle
 render_rgb_camera: false
 
@@ -12,7 +12,7 @@ return_reward_info: true
 stopped_termination_seconds: 90
 
 # maximum seconds that the vehicle can be out of the lane, the junctions
-# don't count because itsn't posible
+# don't count because itsn't possible
 out_of_lane_termination_seconds: 5
 
 seed: 0
@@ -65,6 +65,9 @@ use_leaderboard_setting: true
 # if false: cycle throw all the scenarios
 pick_random: true
 
+########################################################
+# route
+########################################################
 run_type: route
 route: srunner/data/routes_training.xml
 scenario_file: srunner/data/all_towns_traffic_scenarios.json
@@ -72,16 +75,20 @@ single_route: null
 criteria_enable: true
 pick_random_train_weather: true
 
+########################################################
 # scenario
+########################################################
 # run_type: scenario
 # scenario: None
 # randomize: True
 
+########################################################
 # free ride
+########################################################
 # run_type: free ride # can be w/e except route and scenario
 #
 # In training mode, we pick a random map (Towns: 1, 2, 3, 4, 6) and weather
-# every reset. Also, we pick between zero, light, medium and busy traffic contitions.
+# every reset. Also, we pick between zero, light, medium and busy traffic conditions.
 # training_mode: true
 # map: null
 #
@@ -91,7 +98,7 @@ pick_random_train_weather: true
 # traffic_state: Busy # Zero, Light, Medium, Busy
 #
 # random_weather: true
-# dynamic_weather: true
+# dynamic_weather: false # is true may cause some problems (not recommended)
 #
 # have a bigger probability for waypoints close to a junction
 # favor_junction_wps: true

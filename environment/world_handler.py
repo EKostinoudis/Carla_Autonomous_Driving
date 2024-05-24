@@ -367,11 +367,6 @@ class WorldHandler():
             if vehicle.get_location().distance(destination) > 20:
                 break
 
-        '''
-        # don't even know why I used that, probably bug
-        while self.destination == transform:
-            destination = random.choice(spawn_points).location
-        '''
         return vehicle, destination
 
     def synchronous(self):
