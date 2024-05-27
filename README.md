@@ -160,6 +160,28 @@ are:
 For all these option, in the configuration file you find many option in order to
 configured the training in your needs.
 
+#### Running the Carla server
+
+In the RL training there are two options for running the Carla server.
+
+1. Spawn the Carla server by yourself. To use this option you must set
+   `use_carla_launcher: false` in the environment configuration file. In this
+   setting the server ports must start from the given port (in the configuration
+   file, specified by the `port`'s value, and be separated by 4. For example, if
+   we have 2 servers and `port: 2000`, then the two servers will run using the
+   ports 2000 and 2004.
+2. Let the [Carla Launcher](environment/carla_launcher.py) handle the
+   environment spawning. In order to use this option you must:
+   * Set `use_carla_launcher: true` in the environment config.
+   * Pass a shell command that spawns a Carla server with the
+     `carla_launch_script` key in the environment config. This script gets as
+     the first argument the port of the server and as an optional second
+     argument the GPU index to spawn the server (to use this, you must give the
+     number of GPUs with the `num_devices` key). We provide the
+     [launch_carla_server.sh](train/launch_carla_server.sh) example script. You
+     can modify it for your needs and use it (`carla_launch_script: "bash
+     train/launch_carla_server.sh"`).
+
 # Acknowledgements
 
 This repository contains code from various sources:
@@ -168,3 +190,4 @@ This repository contains code from various sources:
 * [CIL++](https://github.com/yixiao1/CILv2_multiview)
 * [Roach](https://github.com/zhejz/carla-roach)
 * [agents](https://github.com/carla-simulator/carla)
+

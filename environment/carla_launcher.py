@@ -86,6 +86,6 @@ class CarlaLauncher():
                 return
             except:
                 time.sleep(self.sleep)
-        print(f'Failed to set synchronous mode {self.port}')
+        logger.info(f'Failed to set synchronous mode {self.port}')
 
 
