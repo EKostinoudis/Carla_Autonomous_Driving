@@ -25,20 +25,20 @@ use_lateral_dist: true
 terminal_lateral_dist: 2.5 # if lateral dist bigger, terminate the episode
 
 # reward constants
-reward_negative_speed_overshoot: true
-reward_dynamic_max_speed: false
-reward_speed_penalty: false
-reward_collision_penalty_scale: 1.0
-reward_failure: -1.0
-reward_success: 1.0
-reward_wrong_lane: -0.1
-reward_steer: -0.01
-reward_speed: 0.02
+reward_negative_speed_overshoot: false
+reward_dynamic_max_speed: true
+reward_speed_penalty: true
+reward_collision_penalty_scale: 0.1
+reward_failure: -2.5
+reward_success: 2.5
+reward_wrong_lane: -0.5
+reward_steer: -0.0
+reward_speed: 0.05
 reward_max_speed: 30.0
-reward_speed_slope: 1.0
-reward_waypoint: 0.5
+reward_speed_slope: 2.0
+reward_waypoint: 0.
 reward_lateral_dist: -0.02
-reward_lateral_angle: 0.0
+reward_lateral_angle: 0.1
 
 #
 # for the carla server

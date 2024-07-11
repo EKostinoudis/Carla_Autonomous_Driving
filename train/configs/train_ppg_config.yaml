@@ -49,20 +49,20 @@ extra_params:
   aux_kl_coef: 1.
 
   # coef for the value function loss at the auxiliary phase
-  aux_vf_coef: 1.
+  aux_vf_coef: 0.5
 
   # coef for the policy head value function loss at the auxiliary phase
-  aux_policy_vf_coef: 1.
+  aux_policy_vf_coef: 0.5
 
   # kl coeff with the pretrained model results
-  pt_kl_coeff: 0.03
-  pt_kl_coeff_decay: 0.999
+  pt_kl_coeff: 0.1
+  pt_kl_coeff_decay: 0.9995
 
   # number of epochs to run for the auxiliary phase
-  auxiliary_epochs: 5
+  auxiliary_epochs: 4
 
   # number of iters before running an auxiliary phase 
-  normal_phase_iters: 4
+  normal_phase_iters: 2
 
   # number of iterations to train only the value function (0 or negative will not train it
   train_only_vf_iters: 0
@@ -89,12 +89,12 @@ extra_params:
   # ema smoothing factor
   value_tartget_norm_ema_gamma: 0.9
 
-  lr: 5.0e-06
-  train_batch_size: 2000
-  sgd_minibatch_size: 12
-  num_sgd_iter: 30
+  lr: 3.0e-05
+  train_batch_size: 6144
+  sgd_minibatch_size: 24
+  num_sgd_iter: 1
 
-  gamma: 0.99
+  gamma: 0.999
   clip_param: 0.2
 
   vf_clip_param: 10.0
