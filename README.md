@@ -6,7 +6,7 @@ The repository contains the code for the paper:
 
 [Optimizing Pretrained Transformers for Autonomous
 Driving](https://dl.acm.org/doi/10.1145/3688671.3688778)
-by Vasileios Kochliaridis, Evaggelos Kostinoudis, Ioannis Vlahavas
+by Vasileios Kochliaridis, Evangelos Kostinoudis, Ioannis Vlahavas
 
 ## Description
 
