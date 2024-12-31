@@ -1,5 +1,15 @@
 # Carla Autonomous Driving
 
+## Paper
+
+The repository contains the code for the paper:
+
+[Optimizing Pretrained Transformers for Autonomous
+Driving](https://dl.acm.org/doi/10.1145/3688671.3688778)
+by Vasileios Kochliaridis, Evaggelos Kostinoudis, Ioannis Vlahavas
+
+## Description
+
 This repository contains code to train a agent in the
 [Carla](https://carla.org/) simulator. Specifically, we use both Imitation
 Learning (IL) and Reinforcement Learning (RL) techniques to train an agent. The
@@ -243,6 +253,31 @@ test.
 | **Route deviations↓**            | **42.459** | 138.670                | 101.009     |
 | **Route timeouts↓**              | **0.0**    | 7.055                  | **0.0**     |
 | **Agent blocked↓**               | 543.86     | 657.512                | **357.555** |
+
+# Citation
+
+Please cite our work if you found it useful:
+
+```
+@inproceedings{10.1145/3688671.3688778,
+   author = {Kochliaridis, Vasileios and Kostinoudis, Evaggelos and Vlahavas, Ioannis},
+   title = {Optimizing Pretrained Transformers for Autonomous Driving},
+   year = {2024},
+   isbn = {9798400709821},
+   publisher = {Association for Computing Machinery},
+   address = {New York, NY, USA},
+   url = {https://doi.org/10.1145/3688671.3688778},
+   doi = {10.1145/3688671.3688778},
+   abstract = {Vision-based end-to-end driving systems have demonstrated impressive capabilities through the utilization of large Transformer architectures. More specifically, researchers have combined Transformers with Imitation Learning, in order to construct agents that learn to map navigation states to actions from large datasets created by experts. Although this approach usually works well, it relies on specific datasets and expert actions, and thus achieving limited generalization capability, which can be quite catastrophic in uncertain navigation environments, such as urban areas. To overcome this limitation, we further expand the training process of the agent by applying the Phasic Policy Gradient algorithm, a Deep Reinforcement Learning (DRL) method that improves its generalization capability by enabling it to explore and interact with the environment. We further enhance our approach by integrating a custom reward function that penalizes the weaknesses of the pretrained agent, alongside with additional DRL techniques to enhance its efficiency and accelerate convergence. Our experimental results in the CARLA simulation environment demonstrate that our approach not only achieves robustness in comparison to previous approaches, but also shows potential for wider application in similar navigation scenarios.},
+   booktitle = {Proceedings of the 13th Hellenic Conference on Artificial Intelligence},
+   articleno = {22},
+   numpages = {9},
+   keywords = {Transformers, Deep Reinforcement Learning, Autonomous Navigation, Image Representations},
+   location = {
+   },
+   series = {SETN '24}
+}
+```
 
 # Acknowledgements
 
